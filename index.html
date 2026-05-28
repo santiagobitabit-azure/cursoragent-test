@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mundial 2026 — Cuenta regresiva Argentina</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="card">
+      <header class="hero">
+        <p class="eyebrow">Copa Mundial FIFA 2026 · Grupo J</p>
+        <h1>Primer partido de Argentina</h1>
+        <p class="match">
+          <span class="teams">🇦🇷 Argentina vs Argelia 🇩🇿</span>
+        </p>
+        <p class="meta">
+          Martes 16 de junio de 2026 · 22:00 (hora Argentina)<br />
+          Arrowhead Stadium · Kansas City
+        </p>
+      </header>
+
+      <section class="countdown" aria-live="polite" aria-label="Tiempo restante">
+        <div class="unit">
+          <span id="days" class="value">--</span>
+          <span class="label">días</span>
+        </div>
+        <div class="unit">
+          <span id="hours" class="value">--</span>
+          <span class="label">horas</span>
+        </div>
+        <div class="unit">
+          <span id="minutes" class="value">--</span>
+          <span class="label">min</span>
+        </div>
+        <div class="unit">
+          <span id="seconds" class="value">--</span>
+          <span class="label">seg</span>
+        </div>
+      </section>
+
+      <p id="status" class="status">Calculando…</p>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
