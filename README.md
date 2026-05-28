@@ -1,35 +1,53 @@
 # cursoragent-test
 
-Sitio del Mundial FIFA 2026 con cuenta regresiva al debut de Argentina y fixture completo de la fase de grupos.
+Sitio del Mundial FIFA 2026: cuenta regresiva, fixture de fase de grupos y **pronósticos** con cuenta de usuario.
 
-## Secciones
+## Funcionalidades
 
-### Cuenta regresiva
-- **Partido:** Argentina vs Argelia (Grupo J)
-- **Fecha:** martes 16 de junio de 2026, 22:00 (hora Argentina)
-- **Sede:** Kansas City Stadium
+- **Cuenta regresiva** al debut de Argentina (Grupo J)
+- **Fixture** con los 12 grupos y 72 partidos (hora Argentina)
+- **Registro e inicio de sesión** (email + contraseña)
+- **Guardar pronósticos** de resultado (goles local : visitante) por partido
 
-### Fixture · Grupos
-- Los **12 grupos** (A–L) con sus **4 equipos**
-- Los **72 partidos** de fase de grupos (11–27 de junio)
-- **Horarios en hora Argentina**
-- Filtro por grupo (incluye vista “Todos”)
-- Partidos de Argentina resaltados en el Grupo J
+## Requisitos
 
-## Ver en local
+- Node.js 18+
+
+## Cómo correr
 
 ```bash
-python3 -m http.server 8080
+npm install
+npm start
 ```
 
-Luego visitar http://localhost:8080
+Abrí http://localhost:8080
 
-## Archivos
+> El servidor Express sirve la web estática y la API (`/api/auth`, `/api/predictions`). Los datos se guardan en SQLite (`data/mundial.db`).
+
+### Variables de entorno (opcional)
+
+| Variable | Descripción |
+|----------|-------------|
+| `PORT` | Puerto (default `8080`) |
+| `JWT_SECRET` | Secreto para tokens JWT (cambiar en producción) |
+
+## API
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/auth/register` | Crear cuenta |
+| POST | `/api/auth/login` | Iniciar sesión |
+| GET | `/api/auth/me` | Usuario actual (Bearer token) |
+| GET | `/api/predictions` | Listar pronósticos del usuario |
+| PUT | `/api/predictions/:matchId` | Guardar/actualizar pronóstico |
+| DELETE | `/api/predictions/:matchId` | Borrar pronóstico |
+
+## Archivos principales
 
 | Archivo | Descripción |
 |---------|-------------|
-| `index.html` | Página principal con pestañas |
-| `app.js` | Cuenta regresiva y navegación |
-| `fixture-data.js` | Datos de grupos y partidos |
-| `fixture.js` | Render del fixture |
-| `styles.css` | Estilos |
+| `server/` | API Express + SQLite |
+| `api.js` | Cliente HTTP |
+| `auth-ui.js` | Login, registro y barra de usuario |
+| `fixture.js` | Fixture + formularios de pronóstico |
+| `fixture-data.js` | Grupos, partidos e IDs |

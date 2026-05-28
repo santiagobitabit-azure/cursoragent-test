@@ -14,6 +14,8 @@
   </head>
   <body>
     <div class="page">
+      <header id="auth-bar" class="auth-bar" aria-label="Cuenta de usuario"></header>
+
       <nav class="tabs" role="tablist" aria-label="Secciones">
         <button
           type="button"
@@ -93,7 +95,8 @@
           <h1>Fixture del Mundial 2026</h1>
           <p class="fixture-sub">
             12 grupos · 48 selecciones · 72 partidos · Horarios en
-            <strong>hora Argentina</strong>
+            <strong>hora Argentina</strong> ·
+            <strong>Pronósticos</strong> con cuenta
           </p>
         </header>
 
@@ -133,7 +136,36 @@
       </section>
     </div>
 
+    <div id="auth-modal" class="auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+      <div id="auth-modal-backdrop" class="auth-modal__backdrop"></div>
+      <div class="auth-modal__card">
+        <button type="button" id="auth-modal-close" class="auth-modal__close" aria-label="Cerrar">×</button>
+        <h2 id="auth-modal-title" class="auth-modal__title">Iniciar sesión</h2>
+        <form id="auth-form" class="auth-form">
+          <div id="auth-name-field" class="auth-form__field">
+            <label for="auth-display-name">Nombre</label>
+            <input id="auth-display-name" name="displayName" type="text" autocomplete="name" minlength="2" />
+          </div>
+          <div class="auth-form__field">
+            <label for="auth-email">Email</label>
+            <input id="auth-email" name="email" type="email" required autocomplete="email" />
+          </div>
+          <div class="auth-form__field">
+            <label for="auth-password">Contraseña</label>
+            <input id="auth-password" name="password" type="password" required minlength="6" autocomplete="current-password" />
+          </div>
+          <p id="auth-error" class="auth-form__error" role="alert"></p>
+          <button type="submit" class="btn btn--primary btn--block">Continuar</button>
+        </form>
+        <p class="auth-modal__switch">
+          <a href="#" id="auth-switch">¿No tenés cuenta? Registrate</a>
+        </p>
+      </div>
+    </div>
+
     <script src="fixture-data.js"></script>
+    <script src="api.js"></script>
+    <script src="auth-ui.js"></script>
     <script src="app.js"></script>
     <script src="fixture.js"></script>
   </body>

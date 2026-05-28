@@ -1,0 +1,20 @@
+{
+  "name": "mundial-2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mundial 2026 — cuenta regresiva, fixture y pronósticos",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^11.10.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
