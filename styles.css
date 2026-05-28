@@ -16,8 +16,6 @@
 body {
   margin: 0;
   min-height: 100vh;
-  display: grid;
-  place-items: center;
   padding: 1.5rem;
   font-family: "Archivo", system-ui, sans-serif;
   color: var(--texto);
@@ -25,6 +23,55 @@ body {
     radial-gradient(circle at 20% 20%, rgba(116, 172, 223, 0.35), transparent 45%),
     radial-gradient(circle at 80% 80%, rgba(246, 196, 69, 0.2), transparent 40%),
     linear-gradient(160deg, #e8f4fc 0%, #cfe8f8 40%, #9ec9e8 100%);
+}
+
+.page {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tab {
+  padding: 0.65rem 1.1rem;
+  border: 2px solid var(--celeste);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.85);
+  color: var(--celeste-dark);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  background: var(--blanco);
+}
+
+.tab--active {
+  background: linear-gradient(180deg, var(--celeste) 0%, var(--celeste-dark) 100%);
+  color: var(--blanco);
+  border-color: var(--celeste-dark);
+}
+
+.panel {
+  display: none;
+}
+
+.panel--active {
+  display: block;
+}
+
+.panel#panel-countdown.panel--active {
+  display: grid;
+  place-items: center;
 }
 
 .card {
@@ -114,4 +161,173 @@ body {
   .countdown {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* —— Fixture —— */
+
+.fixture-header {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.fixture-header h1 {
+  margin: 0.35rem 0 0.5rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 800;
+}
+
+.fixture-sub {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.group-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.filter-btn {
+  min-width: 2.4rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--celeste);
+  border-radius: 0.5rem;
+  background: var(--blanco);
+  color: var(--celeste-dark);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-btn--active {
+  background: var(--celeste-dark);
+  color: var(--blanco);
+  border-color: var(--celeste-dark);
+}
+
+.filter-btn--arg.filter-btn--active {
+  background: linear-gradient(180deg, var(--celeste) 0%, #2d6fa8 100%);
+}
+
+.fixture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.group-card {
+  background: var(--blanco);
+  border-radius: 1rem;
+  border: 2px solid #e2e8f0;
+  padding: 1rem 1rem 0.75rem;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.group-card--arg {
+  border-color: var(--celeste);
+  box-shadow: 0 8px 24px rgba(74, 139, 196, 0.2);
+}
+
+.group-card__head h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--celeste-dark);
+}
+
+.group-card__teams {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.5rem;
+}
+
+.team {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  background: #f1f5f9;
+}
+
+.team--arg {
+  background: linear-gradient(90deg, rgba(116, 172, 223, 0.25), rgba(246, 196, 69, 0.15));
+  grid-column: 1 / -1;
+}
+
+.group-card__matches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.match {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.match:last-child {
+  border-bottom: none;
+}
+
+.match--arg {
+  background: linear-gradient(90deg, rgba(116, 172, 223, 0.08), transparent);
+  margin: 0 -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.match__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.match__time {
+  font-weight: 700;
+  color: var(--celeste-dark);
+}
+
+.match__md {
+  margin-left: auto;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.match__teams {
+  margin: 0 0 0.25rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.match__teams .vs {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.match__venue {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.fixture-note {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #94a3b8;
 }

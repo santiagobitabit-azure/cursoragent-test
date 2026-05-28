@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mundial 2026 — Cuenta regresiva Argentina</title>
+    <title>Mundial 2026 — Argentina & Fixture</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,41 +13,128 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="card">
-      <header class="hero">
-        <p class="eyebrow">Copa Mundial FIFA 2026 · Grupo J</p>
-        <h1>Primer partido de Argentina</h1>
-        <p class="match">
-          <span class="teams">🇦🇷 Argentina vs Argelia 🇩🇿</span>
-        </p>
-        <p class="meta">
-          Martes 16 de junio de 2026 · 22:00 (hora Argentina)<br />
-          Arrowhead Stadium · Kansas City
-        </p>
-      </header>
+    <div class="page">
+      <nav class="tabs" role="tablist" aria-label="Secciones">
+        <button
+          type="button"
+          class="tab tab--active"
+          role="tab"
+          aria-selected="true"
+          aria-controls="panel-countdown"
+          id="tab-countdown"
+          data-panel="countdown"
+        >
+          Cuenta regresiva
+        </button>
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-fixture"
+          id="tab-fixture"
+          data-panel="fixture"
+        >
+          Fixture · Grupos
+        </button>
+      </nav>
 
-      <section class="countdown" aria-live="polite" aria-label="Tiempo restante">
-        <div class="unit">
-          <span id="days" class="value">--</span>
-          <span class="label">días</span>
-        </div>
-        <div class="unit">
-          <span id="hours" class="value">--</span>
-          <span class="label">horas</span>
-        </div>
-        <div class="unit">
-          <span id="minutes" class="value">--</span>
-          <span class="label">min</span>
-        </div>
-        <div class="unit">
-          <span id="seconds" class="value">--</span>
-          <span class="label">seg</span>
-        </div>
+      <section
+        id="panel-countdown"
+        class="panel panel--active"
+        role="tabpanel"
+        aria-labelledby="tab-countdown"
+      >
+        <main class="card card--narrow">
+          <header class="hero">
+            <p class="eyebrow">Copa Mundial FIFA 2026 · Grupo J</p>
+            <h1>Primer partido de Argentina</h1>
+            <p class="match">
+              <span class="teams">🇦🇷 Argentina vs Argelia 🇩🇿</span>
+            </p>
+            <p class="meta">
+              Martes 16 de junio de 2026 · 22:00 (hora Argentina)<br />
+              Arrowhead Stadium · Kansas City
+            </p>
+          </header>
+
+          <section class="countdown" aria-live="polite" aria-label="Tiempo restante">
+            <div class="unit">
+              <span id="days" class="value">--</span>
+              <span class="label">días</span>
+            </div>
+            <div class="unit">
+              <span id="hours" class="value">--</span>
+              <span class="label">horas</span>
+            </div>
+            <div class="unit">
+              <span id="minutes" class="value">--</span>
+              <span class="label">min</span>
+            </div>
+            <div class="unit">
+              <span id="seconds" class="value">--</span>
+              <span class="label">seg</span>
+            </div>
+          </section>
+
+          <p id="status" class="status">Calculando…</p>
+        </main>
       </section>
 
-      <p id="status" class="status">Calculando…</p>
-    </main>
+      <section
+        id="panel-fixture"
+        class="panel"
+        role="tabpanel"
+        aria-labelledby="tab-fixture"
+        hidden
+      >
+        <header class="fixture-header">
+          <p class="eyebrow">Fase de grupos · 11 al 27 de junio</p>
+          <h1>Fixture del Mundial 2026</h1>
+          <p class="fixture-sub">
+            12 grupos · 48 selecciones · 72 partidos · Horarios en
+            <strong>hora Argentina</strong>
+          </p>
+        </header>
 
+        <div
+          id="group-filters"
+          class="group-filters"
+          role="tablist"
+          aria-label="Filtrar por grupo"
+        >
+          <button
+            type="button"
+            class="filter-btn filter-btn--active"
+            data-group="all"
+            aria-selected="true"
+          >
+            Todos
+          </button>
+          <button type="button" class="filter-btn" data-group="A" aria-selected="false">A</button>
+          <button type="button" class="filter-btn" data-group="B" aria-selected="false">B</button>
+          <button type="button" class="filter-btn" data-group="C" aria-selected="false">C</button>
+          <button type="button" class="filter-btn" data-group="D" aria-selected="false">D</button>
+          <button type="button" class="filter-btn" data-group="E" aria-selected="false">E</button>
+          <button type="button" class="filter-btn" data-group="F" aria-selected="false">F</button>
+          <button type="button" class="filter-btn" data-group="G" aria-selected="false">G</button>
+          <button type="button" class="filter-btn" data-group="H" aria-selected="false">H</button>
+          <button type="button" class="filter-btn" data-group="I" aria-selected="false">I</button>
+          <button type="button" class="filter-btn filter-btn--arg" data-group="J" aria-selected="false">J 🇦🇷</button>
+          <button type="button" class="filter-btn" data-group="K" aria-selected="false">K</button>
+          <button type="button" class="filter-btn" data-group="L" aria-selected="false">L</button>
+        </div>
+
+        <div id="fixture-grid" class="fixture-grid"></div>
+
+        <p class="fixture-note">
+          Calendario según el fixture oficial de la fase de grupos (Mundial 2026, USA · México · Canadá).
+        </p>
+      </section>
+    </div>
+
+    <script src="fixture-data.js"></script>
     <script src="app.js"></script>
+    <script src="fixture.js"></script>
   </body>
 </html>
