@@ -1,0 +1,117 @@
+:root {
+  --celeste: #74acdf;
+  --celeste-dark: #4a8bc4;
+  --blanco: #f8fafc;
+  --oro: #f6c445;
+  --texto: #0f172a;
+  --sombra: rgba(15, 23, 42, 0.18);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  font-family: "Archivo", system-ui, sans-serif;
+  color: var(--texto);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(116, 172, 223, 0.35), transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(246, 196, 69, 0.2), transparent 40%),
+    linear-gradient(160deg, #e8f4fc 0%, #cfe8f8 40%, #9ec9e8 100%);
+}
+
+.card {
+  width: min(560px, 100%);
+  padding: 2rem 1.75rem 2.25rem;
+  border-radius: 1.25rem;
+  background: var(--blanco);
+  box-shadow: 0 24px 48px var(--sombra);
+  border: 3px solid var(--celeste);
+  text-align: center;
+}
+
+.hero h1 {
+  margin: 0.35rem 0 0.75rem;
+  font-size: clamp(1.5rem, 4vw, 1.85rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--celeste-dark);
+}
+
+.match {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.countdown {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin: 2rem 0 1rem;
+}
+
+.unit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 0.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, var(--celeste) 0%, var(--celeste-dark) 100%);
+  color: var(--blanco);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.value {
+  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
+.status {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.status--done {
+  color: var(--celeste-dark);
+  font-weight: 600;
+}
+
+@media (max-width: 420px) {
+  .countdown {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
