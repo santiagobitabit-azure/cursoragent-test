@@ -1,5 +1,5 @@
 /** Debut de Argentina en el Mundial 2026 — hora oficial Argentina */
-const MATCH_START = new Date("2026-06-16T22:00:00-03:00");
+const MATCH_START = new Date("2026-06-16T21:00:00-04:00");
 
 const daysEl = document.getElementById("days");
 const hoursEl = document.getElementById("hours");
@@ -12,6 +12,8 @@ function pad(n) {
 }
 
 function updateCountdown() {
+  if (!daysEl) return;
+
   const now = Date.now();
   const diff = MATCH_START.getTime() - now;
 
@@ -40,5 +42,27 @@ function updateCountdown() {
   statusEl.classList.remove("status--done");
 }
 
+function initTabs() {
+  const tabs = document.querySelectorAll(".tabs .tab");
+  const panels = document.querySelectorAll(".panel");
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.panel;
+      tabs.forEach((t) => {
+        const active = t === tab;
+        t.classList.toggle("tab--active", active);
+        t.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      panels.forEach((panel) => {
+        const show = panel.id === `panel-${target}`;
+        panel.classList.toggle("panel--active", show);
+        panel.hidden = !show;
+      });
+    });
+  });
+}
+
 updateCountdown();
 setInterval(updateCountdown, 1000);
+initTabs();
