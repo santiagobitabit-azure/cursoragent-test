@@ -4,11 +4,7 @@ const db = require("../db");
 const JWT_SECRET = process.env.JWT_SECRET || "mundial-2026-dev-secret-change-in-production";
 
 function signToken(user) {
-  return jwt.sign(
-    { sub: user.id, email: user.email, isAdmin: !!user.is_admin },
-    JWT_SECRET,
-    { expiresIn: "30d" }
-  );
+  return jwt.sign({ sub: user.id }, JWT_SECRET, { expiresIn: "30d" });
 }
 
 function attachUser(req, res, next) {

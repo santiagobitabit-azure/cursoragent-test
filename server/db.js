@@ -1,7 +1,6 @@
 const Database = require("better-sqlite3");
 const path = require("path");
 const fs = require("fs");
-const bcrypt = require("bcryptjs");
 
 const dataDir = path.join(__dirname, "..", "data");
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -42,28 +41,5 @@ try {
 } catch {
   /* columna ya existe */
 }
-
-function seedAdmin() {
-  const email = (process.env.ADMIN_EMAIL || "admin@mundial.local").trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD || "admin123456";
-  const name = process.env.ADMIN_NAME || "Administrador";
-
-  const existing = db
-    .prepare("SELECT id FROM users WHERE email = ? COLLATE NOCASE")
-    .get(email);
-
-  if (existing) {
-    db.prepare("UPDATE users SET is_admin = 1 WHERE id = ?").run(existing.id);
-    return;
-  }
-
-  const hash = bcrypt.hashSync(password, 10);
-  db.prepare(
-    "INSERT INTO users (email, display_name, password_hash, is_admin) VALUES (?, ?, ?, 1)"
-  ).run(email, name, hash);
-  console.log(`Admin creado: ${email}`);
-}
-
-seedAdmin();
 
 module.exports = db;

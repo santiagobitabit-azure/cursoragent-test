@@ -273,6 +273,12 @@ async function onAdminPanelOpen() {
   root.innerHTML = '<p class="admin-loading">Cargando panel…</p>';
 
   try {
+    await window.AuthState?.refreshUser?.();
+    updateAdminTabVisibility();
+    if (!window.AuthState?.getUser()?.isAdmin) {
+      root.innerHTML = '<p class="admin-empty">No tenés permisos de administrador.</p>';
+      return;
+    }
     await loadAdminData();
     renderAdminPanel();
   } catch (err) {

@@ -140,10 +140,31 @@ async function initAuth() {
   if (typeof updateAdminTabVisibility === "function") updateAdminTabVisibility();
 }
 
+async function refreshCurrentUser() {
+  if (!AuthAPI.getToken()) {
+    currentUser = null;
+    return null;
+  }
+  try {
+    const data = await AuthAPI.me();
+    currentUser = data.user;
+    renderAuthBar();
+    if (typeof updateAdminTabVisibility === "function") updateAdminTabVisibility();
+    return currentUser;
+  } catch {
+    AuthAPI.setToken(null);
+    currentUser = null;
+    renderAuthBar();
+    if (typeof updateAdminTabVisibility === "function") updateAdminTabVisibility();
+    return null;
+  }
+}
+
 window.AuthState = {
   getUser: () => currentUser,
   isLoggedIn: () => !!currentUser,
   isAdmin: () => !!currentUser?.isAdmin,
+  refreshUser: refreshCurrentUser,
   getPredictions: () => predictionsCache,
   setPrediction(matchId, homeScore, awayScore) {
     predictionsCache[matchId] = { homeScore, awayScore };
