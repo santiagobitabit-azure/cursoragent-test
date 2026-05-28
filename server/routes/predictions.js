@@ -1,8 +1,10 @@
 const express = require("express");
 const db = require("../db");
 const { requireAuth } = require("../middleware/auth");
+const { loadMatches } = require("../matches");
 
 const router = express.Router();
+const { ids: matchIds } = loadMatches();
 
 const listByUser = db.prepare(
   "SELECT match_id, home_score, away_score, updated_at FROM predictions WHERE user_id = ?"
@@ -18,29 +20,6 @@ const upsert = db.prepare(`
 const removeOne = db.prepare(
   "DELETE FROM predictions WHERE user_id = ? AND match_id = ?"
 );
-
-function loadMatchIds() {
-  const fs = require("fs");
-  const path = require("path");
-  const content = fs.readFileSync(path.join(__dirname, "..", "..", "fixture-data.js"), "utf8");
-  const marker = "const GROUP_STAGE_MATCHES = ";
-  const start = content.indexOf(marker) + marker.length;
-  let depth = 0;
-  let end = start;
-  for (let i = start; i < content.length; i++) {
-    if (content[i] === "[") depth++;
-    else if (content[i] === "]") {
-      depth--;
-      if (depth === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-  }
-  return new Set(JSON.parse(content.slice(start, end)).map((m) => m.id));
-}
-
-const matchIds = loadMatchIds();
 
 router.use(requireAuth);
 
@@ -78,9 +57,7 @@ router.put("/:matchId", (req, res) => {
   }
 
   upsert.run(req.userId, matchId, homeScore, awayScore);
-  res.json({
-    prediction: { matchId, homeScore, awayScore },
-  });
+  res.json({ prediction: { matchId, homeScore, awayScore } });
 });
 
 router.delete("/:matchId", (req, res) => {

@@ -8,6 +8,7 @@ Sitio del Mundial FIFA 2026: cuenta regresiva, fixture de fase de grupos y **pro
 - **Fixture** con los 12 grupos y 72 partidos (hora Argentina)
 - **Registro e inicio de sesión** (email + contraseña)
 - **Guardar pronósticos** de resultado (goles local : visitante) por partido
+- **Panel de administración**: ver todos los pronósticos, cargar resultados reales y ranking de aciertos
 
 ## Requisitos
 
@@ -30,6 +31,18 @@ Abrí http://localhost:8080
 |----------|-------------|
 | `PORT` | Puerto (default `8080`) |
 | `JWT_SECRET` | Secreto para tokens JWT (cambiar en producción) |
+| `ADMIN_EMAIL` | Email del admin (default `admin@mundial.local`) |
+| `ADMIN_PASSWORD` | Contraseña del admin (default `admin123456`) |
+| `ADMIN_NAME` | Nombre visible del admin |
+
+### Cuenta administrador (desarrollo)
+
+Por defecto se crea o promueve un admin al iniciar el servidor:
+
+- **Email:** `admin@mundial.local`
+- **Contraseña:** `admin123456`
+
+Iniciá sesión y abrí la pestaña **Administración**.
 
 ## API
 
@@ -41,6 +54,18 @@ Abrí http://localhost:8080
 | GET | `/api/predictions` | Listar pronósticos del usuario |
 | PUT | `/api/predictions/:matchId` | Guardar/actualizar pronóstico |
 | DELETE | `/api/predictions/:matchId` | Borrar pronóstico |
+
+### API Admin (requiere usuario admin)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/admin/dashboard` | Stats + ranking |
+| GET | `/api/admin/predictions` | Todos los pronósticos con puntos |
+| GET | `/api/admin/results` | Resultados reales + partidos |
+| PUT | `/api/admin/results/:matchId` | Cargar resultado real |
+| GET | `/api/admin/leaderboard` | Ranking de pronosticadores |
+
+**Puntuación:** 3 pts resultado exacto · 1 pt acierto de ganador o empate.
 
 ## Archivos principales
 

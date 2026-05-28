@@ -39,6 +39,18 @@
         >
           Fixture · Grupos
         </button>
+        <button
+          type="button"
+          class="tab tab--admin"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-admin"
+          id="tab-admin"
+          data-panel="admin"
+          hidden
+        >
+          Administración
+        </button>
       </nav>
 
       <section
@@ -134,6 +146,24 @@
           Calendario según el fixture oficial de la fase de grupos (Mundial 2026, USA · México · Canadá).
         </p>
       </section>
+
+      <section
+        id="panel-admin"
+        class="panel panel--admin"
+        role="tabpanel"
+        aria-labelledby="tab-admin"
+        hidden
+      >
+        <header class="fixture-header">
+          <p class="eyebrow">Solo administradores</p>
+          <h1>Panel de administración</h1>
+          <p class="fixture-sub">
+            Gestioná resultados reales, revisá todos los pronósticos y el ranking de aciertos
+          </p>
+        </header>
+        <nav id="admin-subnav" class="admin-subnav" aria-label="Secciones de administración"></nav>
+        <div id="admin-content" class="admin-content"></div>
+      </section>
     </div>
 
     <div id="auth-modal" class="auth-modal" hidden role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
@@ -168,5 +198,6 @@
     <script src="auth-ui.js"></script>
     <script src="app.js"></script>
     <script src="fixture.js"></script>
+    <script src="admin-ui.js"></script>
   </body>
 </html>

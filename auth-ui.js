@@ -15,12 +15,19 @@ function renderAuthBar() {
   if (!bar) return;
 
   if (currentUser) {
+    const adminLink = currentUser.isAdmin
+      ? `<button type="button" class="btn btn--ghost" id="btn-go-admin">Administración</button>`
+      : "";
     bar.innerHTML = `
-      <span class="auth-bar__user">Hola, <strong>${escapeHtml(currentUser.displayName)}</strong></span>
-      <span class="auth-bar__hint">Podés guardar pronósticos en el fixture</span>
+      <span class="auth-bar__user">Hola, <strong>${escapeHtml(currentUser.displayName)}</strong>${currentUser.isAdmin ? ' <span class="admin-tag">Admin</span>' : ""}</span>
+      <span class="auth-bar__hint">${currentUser.isAdmin ? "Panel de administración disponible" : "Podés guardar pronósticos en el fixture"}</span>
+      ${adminLink}
       <button type="button" class="btn btn--ghost" id="btn-logout">Cerrar sesión</button>
     `;
     document.getElementById("btn-logout")?.addEventListener("click", logout);
+    document.getElementById("btn-go-admin")?.addEventListener("click", () => {
+      document.getElementById("tab-admin")?.click();
+    });
   } else {
     bar.innerHTML = `
       <span class="auth-bar__hint">Iniciá sesión para guardar tus pronósticos</span>
@@ -80,6 +87,7 @@ async function handleAuthSubmit(e) {
     closeAuthModal();
     await loadPredictions();
     renderAuthBar();
+    if (typeof updateAdminTabVisibility === "function") updateAdminTabVisibility();
     window.dispatchEvent(new CustomEvent("auth:change", { detail: { user: currentUser } }));
   } catch (err) {
     authError().textContent = err.message;
@@ -129,11 +137,13 @@ async function initAuth() {
   }
 
   renderAuthBar();
+  if (typeof updateAdminTabVisibility === "function") updateAdminTabVisibility();
 }
 
 window.AuthState = {
   getUser: () => currentUser,
   isLoggedIn: () => !!currentUser,
+  isAdmin: () => !!currentUser?.isAdmin,
   getPredictions: () => predictionsCache,
   setPrediction(matchId, homeScore, awayScore) {
     predictionsCache[matchId] = { homeScore, awayScore };

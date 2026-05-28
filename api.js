@@ -61,6 +61,36 @@ const AuthAPI = {
       headers: { Authorization: `Bearer ${this.getToken()}` },
     });
   },
+
+  adminDashboard() {
+    return this.request("/api/admin/dashboard");
+  },
+
+  adminPredictions() {
+    return this.request("/api/admin/predictions");
+  },
+
+  adminResults() {
+    return this.request("/api/admin/results");
+  },
+
+  adminSaveResult(matchId, homeScore, awayScore) {
+    return this.request(`/api/admin/results/${matchId}`, {
+      method: "PUT",
+      body: JSON.stringify({ homeScore, awayScore }),
+    });
+  },
+
+  adminDeleteResult(matchId) {
+    return fetch(`/api/admin/results/${matchId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${this.getToken()}` },
+    });
+  },
+
+  adminLeaderboard() {
+    return this.request("/api/admin/leaderboard");
+  },
 };
 
 window.AuthAPI = AuthAPI;

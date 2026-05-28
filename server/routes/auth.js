@@ -1,22 +1,28 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const db = require("../db");
-const { signToken } = require("../middleware/auth");
+const { signToken, JWT_SECRET } = require("../middleware/auth");
+const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
 const insertUser = db.prepare(
-  "INSERT INTO users (email, display_name, password_hash) VALUES (?, ?, ?)"
+  "INSERT INTO users (email, display_name, password_hash, is_admin) VALUES (?, ?, ?, 0)"
 );
 const findByEmail = db.prepare(
-  "SELECT id, email, display_name, password_hash FROM users WHERE email = ? COLLATE NOCASE"
+  "SELECT id, email, display_name, password_hash, is_admin FROM users WHERE email = ? COLLATE NOCASE"
 );
 const findById = db.prepare(
-  "SELECT id, email, display_name, created_at FROM users WHERE id = ?"
+  "SELECT id, email, display_name, is_admin, created_at FROM users WHERE id = ?"
 );
 
 function userResponse(row) {
-  return { id: row.id, email: row.email, displayName: row.display_name };
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    isAdmin: !!row.is_admin,
+  };
 }
 
 router.post("/register", (req, res) => {
@@ -70,8 +76,6 @@ router.get("/me", (req, res) => {
     return res.status(401).json({ error: "No autenticado." });
   }
   try {
-    const jwt = require("jsonwebtoken");
-    const { JWT_SECRET } = require("../middleware/auth");
     const payload = jwt.verify(header.slice(7), JWT_SECRET);
     const user = findById.get(payload.sub);
     if (!user) return res.status(401).json({ error: "Usuario no encontrado." });
