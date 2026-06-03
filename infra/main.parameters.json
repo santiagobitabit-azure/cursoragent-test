@@ -11,6 +11,9 @@
     "jwtSecret": {
       "value": "CAMBIAR-POR-UN-SECRETO-LARGO-Y-ALEATORIO"
     },
+    "postgresAdminPassword": {
+      "value": "CAMBIAR-POR-UNA-CONTRASEÑA-FUERTE"
+    },
     "containerImage": {
       "value": "mcr.microsoft.com/k8se/quickstart:latest"
     },

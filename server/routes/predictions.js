@@ -1,30 +1,18 @@
 const express = require("express");
-const db = require("../db");
+const { pool } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const { loadMatches } = require("../matches");
 
 const router = express.Router();
 const { ids: matchIds } = loadMatches();
 
-const listByUser = db.prepare(
-  "SELECT match_id, home_score, away_score, updated_at FROM predictions WHERE user_id = ?"
-);
-const upsert = db.prepare(`
-  INSERT INTO predictions (user_id, match_id, home_score, away_score, updated_at)
-  VALUES (?, ?, ?, ?, datetime('now'))
-  ON CONFLICT(user_id, match_id) DO UPDATE SET
-    home_score = excluded.home_score,
-    away_score = excluded.away_score,
-    updated_at = datetime('now')
-`);
-const removeOne = db.prepare(
-  "DELETE FROM predictions WHERE user_id = ? AND match_id = ?"
-);
-
 router.use(requireAuth);
 
-router.get("/", (req, res) => {
-  const rows = listByUser.all(req.userId);
+router.get("/", async (req, res) => {
+  const { rows } = await pool.query(
+    "SELECT match_id, home_score, away_score, updated_at FROM predictions WHERE user_id = $1",
+    [req.userId]
+  );
   const predictions = {};
   for (const row of rows) {
     predictions[row.match_id] = {
@@ -36,7 +24,7 @@ router.get("/", (req, res) => {
   res.json({ predictions });
 });
 
-router.put("/:matchId", (req, res) => {
+router.put("/:matchId", async (req, res) => {
   const { matchId } = req.params;
   if (!matchIds.has(matchId)) {
     return res.status(400).json({ error: "Partido no válido." });
@@ -56,16 +44,27 @@ router.put("/:matchId", (req, res) => {
     return res.status(400).json({ error: "Ingresá goles válidos (0–99)." });
   }
 
-  upsert.run(req.userId, matchId, homeScore, awayScore);
+  await pool.query(
+    `INSERT INTO predictions (user_id, match_id, home_score, away_score, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (user_id, match_id) DO UPDATE SET
+       home_score = EXCLUDED.home_score,
+       away_score = EXCLUDED.away_score,
+       updated_at = NOW()`,
+    [req.userId, matchId, homeScore, awayScore]
+  );
   res.json({ prediction: { matchId, homeScore, awayScore } });
 });
 
-router.delete("/:matchId", (req, res) => {
+router.delete("/:matchId", async (req, res) => {
   const { matchId } = req.params;
   if (!matchIds.has(matchId)) {
     return res.status(400).json({ error: "Partido no válido." });
   }
-  removeOne.run(req.userId, matchId);
+  await pool.query("DELETE FROM predictions WHERE user_id = $1 AND match_id = $2", [
+    req.userId,
+    matchId,
+  ]);
   res.status(204).end();
 });
 

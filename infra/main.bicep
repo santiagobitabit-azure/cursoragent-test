@@ -8,6 +8,13 @@ param location string = resourceGroup().location
 @description('Secreto JWT para firmar tokens de sesión. Usá un valor largo y aleatorio.')
 param jwtSecret string
 
+@secure()
+@description('Contraseña del administrador de PostgreSQL Flexible Server.')
+param postgresAdminPassword string
+
+@description('Usuario administrador de PostgreSQL.')
+param postgresAdminUser string = 'mundialadmin'
+
 @description('Imagen inicial del contenedor. Tras el primer CI/CD se reemplaza por la imagen del ACR.')
 param containerImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
@@ -18,13 +25,13 @@ param minReplicas int = 1
 param maxReplicas int = 2
 
 var uniqueSuffix = uniqueString(resourceGroup().id)
-var storageAccountName = take('${replace(toLower(baseName), '-', '')}${uniqueSuffix}', 24)
 var acrName = take('acr${replace(toLower(baseName), '-', '')}${uniqueSuffix}', 50)
-var fileShareName = 'mundial-data'
+var postgresServerName = take('psql${replace(toLower(baseName), '-', '')}${uniqueSuffix}', 63)
+var postgresDbName = 'mundial'
 var logAnalyticsName = 'log-${baseName}-${uniqueSuffix}'
 var containerAppsEnvName = 'cae-${baseName}-${uniqueSuffix}'
 var containerAppName = 'ca-${baseName}-${uniqueSuffix}'
-var envStorageName = 'mundialdata'
+var encodedPassword = uriComponent(postgresAdminPassword)
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
@@ -51,42 +58,41 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
-  name: storageAccountName
+resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-preview' = {
+  name: postgresServerName
   location: location
   sku: {
-    name: 'Standard_LRS'
+    name: 'Standard_B1ms'
+    tier: 'Burstable'
   }
-  kind: 'StorageV2'
   properties: {
-    minimumTlsVersion: 'TLS1_2'
-    supportsHttpsTrafficOnly: true
-  }
-}
-
-resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2023-05-01' = {
-  parent: storageAccount
-  name: 'default'
-}
-
-resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-05-01' = {
-  parent: fileService
-  name: fileShareName
-  properties: {
-    shareQuota: 5
-  }
-}
-
-resource envStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
-  parent: containerAppsEnv
-  name: envStorageName
-  properties: {
-    azureFile: {
-      accountName: storageAccount.name
-      accountKey: storageAccount.listKeys().keys[0].value
-      shareName: fileShare.name
-      accessMode: 'ReadWrite'
+    version: '16'
+    administratorLogin: postgresAdminUser
+    administratorLoginPassword: postgresAdminPassword
+    storage: {
+      storageSizeGB: 32
     }
+    backup: {
+      backupRetentionDays: 7
+      geoRedundantBackup: 'Disabled'
+    }
+    highAvailability: {
+      mode: 'Disabled'
+    }
+  }
+}
+
+resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-12-01-preview' = {
+  parent: postgresServer
+  name: postgresDbName
+}
+
+resource postgresFirewallAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = {
+  parent: postgresServer
+  name: 'AllowAllAzureIps'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
   }
 }
 
@@ -129,6 +135,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'jwt-secret'
           value: jwtSecret
         }
+        {
+          name: 'database-url'
+          value: 'postgresql://${postgresAdminUser}:${encodedPassword}@${postgresServer.properties.fullyQualifiedDomainName}:5432/${postgresDbName}?sslmode=require'
+        }
       ]
     }
     template: {
@@ -153,33 +163,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'JWT_SECRET'
               secretRef: 'jwt-secret'
             }
-          ]
-          volumeMounts: [
             {
-              volumeName: 'data-volume'
-              mountPath: '/app/data'
-            }
-          ]
-          probes: [
-            {
-              type: 'Startup'
-              httpGet: {
-                path: '/api/health'
-                port: 8080
-                scheme: 'HTTP'
-              }
-              periodSeconds: 10
-              failureThreshold: 12
-            }
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/api/health'
-                port: 8080
-                scheme: 'HTTP'
-              }
-              periodSeconds: 30
-              failureThreshold: 3
+              name: 'DATABASE_URL'
+              secretRef: 'database-url'
             }
           ]
         }
@@ -198,18 +184,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      volumes: [
-        {
-          name: 'data-volume'
-          storageType: 'AzureFile'
-          storageName: envStorageName
-        }
-      ]
     }
   }
-  dependsOn: [
-    envStorage
-  ]
 }
 
 resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -226,6 +202,7 @@ output containerAppName string = containerApp.name
 output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output acrName string = acr.name
 output acrLoginServer string = acr.properties.loginServer
-output storageAccountName string = storageAccount.name
-output fileShareName string = fileShare.name
+output postgresServerName string = postgresServer.name
+output postgresFqdn string = postgresServer.properties.fullyQualifiedDomainName
+output postgresDatabaseName string = postgresDatabase.name
 output resourceGroupName string = resourceGroup().name

@@ -9,10 +9,6 @@ COPY . .
 
 FROM node:20-bookworm-slim
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends libsqlite3-0 \
-  && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -23,8 +19,6 @@ COPY --from=builder /app/package.json ./package.json
 COPY server ./server
 COPY scripts ./scripts
 COPY index.html app.js api.js auth-ui.js admin-ui.js fixture.js fixture-data.js styles.css ./
-
-RUN mkdir -p data
 
 EXPOSE 8080
 
