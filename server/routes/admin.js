@@ -1,5 +1,5 @@
 const express = require("express");
-const db = require("../db");
+const { pool } = require("../db");
 const { requireAdmin } = require("../middleware/auth");
 const { loadMatches } = require("../matches");
 const { computeLeaderboard, scoreSingle } = require("../utils/scoring");
@@ -7,32 +7,14 @@ const { computeLeaderboard, scoreSingle } = require("../utils/scoring");
 const router = express.Router();
 const { matches, byId, ids: matchIds } = loadMatches();
 
-const allPredictions = db.prepare(`
-  SELECT p.user_id, p.match_id, p.home_score, p.away_score, p.updated_at,
-         u.display_name, u.email
-  FROM predictions p
-  JOIN users u ON u.id = p.user_id
-  ORDER BY p.match_id, u.display_name
-`);
-const allResults = db.prepare(
-  "SELECT match_id, home_score, away_score, updated_at FROM match_results"
-);
-const upsertResult = db.prepare(`
-  INSERT INTO match_results (match_id, home_score, away_score, updated_at, updated_by)
-  VALUES (?, ?, ?, datetime('now'), ?)
-  ON CONFLICT(match_id) DO UPDATE SET
-    home_score = excluded.home_score,
-    away_score = excluded.away_score,
-    updated_at = datetime('now'),
-    updated_by = excluded.updated_by
-`);
-const allUsers = db.prepare("SELECT id, display_name, email, is_admin FROM users");
-
 router.use(requireAdmin);
 
-function resultsMap() {
+async function resultsMap() {
+  const { rows } = await pool.query(
+    "SELECT match_id, home_score, away_score, updated_at FROM match_results"
+  );
   const map = {};
-  for (const row of allResults.all()) {
+  for (const row of rows) {
     map[row.match_id] = {
       homeScore: row.home_score,
       awayScore: row.away_score,
@@ -42,10 +24,18 @@ function resultsMap() {
   return map;
 }
 
-router.get("/dashboard", (req, res) => {
-  const predictions = allPredictions.all();
-  const results = resultsMap();
-  const users = allUsers.all();
+router.get("/dashboard", async (req, res) => {
+  const { rows: predictions } = await pool.query(`
+    SELECT p.user_id, p.match_id, p.home_score, p.away_score, p.updated_at,
+           u.display_name, u.email
+    FROM predictions p
+    JOIN users u ON u.id = p.user_id
+    ORDER BY p.match_id, u.display_name
+  `);
+  const results = await resultsMap();
+  const { rows: users } = await pool.query(
+    "SELECT id, display_name, email, is_admin FROM users"
+  );
   const usersById = Object.fromEntries(users.map((u) => [u.id, u]));
 
   const leaderboard = computeLeaderboard(predictions, results, usersById);
@@ -62,9 +52,15 @@ router.get("/dashboard", (req, res) => {
   });
 });
 
-router.get("/predictions", (req, res) => {
-  const results = resultsMap();
-  const rows = allPredictions.all();
+router.get("/predictions", async (req, res) => {
+  const results = await resultsMap();
+  const { rows } = await pool.query(`
+    SELECT p.user_id, p.match_id, p.home_score, p.away_score, p.updated_at,
+           u.display_name, u.email
+    FROM predictions p
+    JOIN users u ON u.id = p.user_id
+    ORDER BY p.match_id, u.display_name
+  `);
 
   const list = rows.map((row) => {
     const match = byId[row.match_id];
@@ -102,11 +98,11 @@ router.get("/predictions", (req, res) => {
   res.json({ predictions: list, results });
 });
 
-router.get("/results", (req, res) => {
-  res.json({ results: resultsMap(), matches });
+router.get("/results", async (req, res) => {
+  res.json({ results: await resultsMap(), matches });
 });
 
-router.put("/results/:matchId", (req, res) => {
+router.put("/results/:matchId", async (req, res) => {
   const { matchId } = req.params;
   if (!matchIds.has(matchId)) {
     return res.status(400).json({ error: "Partido no válido." });
@@ -126,20 +122,38 @@ router.put("/results/:matchId", (req, res) => {
     return res.status(400).json({ error: "Ingresá goles válidos (0–99)." });
   }
 
-  upsertResult.run(matchId, homeScore, awayScore, req.userId);
+  await pool.query(
+    `INSERT INTO match_results (match_id, home_score, away_score, updated_at, updated_by)
+     VALUES ($1, $2, $3, NOW(), $4)
+     ON CONFLICT (match_id) DO UPDATE SET
+       home_score = EXCLUDED.home_score,
+       away_score = EXCLUDED.away_score,
+       updated_at = NOW(),
+       updated_by = EXCLUDED.updated_by`,
+    [matchId, homeScore, awayScore, req.userId]
+  );
   res.json({ result: { matchId, homeScore, awayScore } });
 });
 
-router.delete("/results/:matchId", (req, res) => {
+router.delete("/results/:matchId", async (req, res) => {
   const { matchId } = req.params;
-  db.prepare("DELETE FROM match_results WHERE match_id = ?").run(matchId);
+  await pool.query("DELETE FROM match_results WHERE match_id = $1", [matchId]);
   res.status(204).end();
 });
 
-router.get("/leaderboard", (req, res) => {
-  const predictions = allPredictions.all();
-  const results = resultsMap();
-  const usersById = Object.fromEntries(allUsers.all().map((u) => [u.id, u]));
+router.get("/leaderboard", async (req, res) => {
+  const { rows: predictions } = await pool.query(`
+    SELECT p.user_id, p.match_id, p.home_score, p.away_score, p.updated_at,
+           u.display_name, u.email
+    FROM predictions p
+    JOIN users u ON u.id = p.user_id
+    ORDER BY p.match_id, u.display_name
+  `);
+  const results = await resultsMap();
+  const { rows: users } = await pool.query(
+    "SELECT id, display_name, email, is_admin FROM users"
+  );
+  const usersById = Object.fromEntries(users.map((u) => [u.id, u]));
   const leaderboard = computeLeaderboard(predictions, results, usersById);
   res.json({ leaderboard, resultsCount: Object.keys(results).length });
 });

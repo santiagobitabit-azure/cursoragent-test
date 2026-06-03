@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const { init, pool } = require("./db");
 const authRoutes = require("./routes/auth");
 const predictionRoutes = require("./routes/predictions");
 const adminRoutes = require("./routes/admin");
@@ -9,8 +10,13 @@ const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 
-app.get("/api/health", (req, res) => {
-  res.json({ ok: true });
+app.get("/api/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ ok: true });
+  } catch {
+    res.status(503).json({ ok: false, error: "Base de datos no disponible." });
+  }
 });
 
 app.use("/api/auth", authRoutes);
@@ -29,6 +35,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Error interno del servidor." });
 });
 
-app.listen(PORT, () => {
-  console.log(`Mundial 2026 → http://localhost:${PORT}`);
-});
+init()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Mundial 2026 → http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("No se pudo inicializar la base de datos:", err.message);
+    process.exit(1);
+  });

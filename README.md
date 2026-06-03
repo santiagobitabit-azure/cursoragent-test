@@ -17,13 +17,24 @@ Sitio del Mundial FIFA 2026: cuenta regresiva, fixture de fase de grupos y **pro
 ## Cómo correr
 
 ```bash
+docker compose up -d
 npm install
 npm start
 ```
 
 Abrí http://localhost:8080
 
-> El servidor Express sirve la web estática y la API (`/api/auth`, `/api/predictions`). Los datos se guardan en SQLite (`data/mundial.db`).
+> El servidor Express sirve la web estática y la API (`/api/auth`, `/api/predictions`). Los datos se guardan en **PostgreSQL**.
+
+### Base de datos local
+
+```bash
+docker compose up -d
+npm install
+npm start
+```
+
+Por defecto la app usa `postgresql://mundial:mundial@localhost:5432/mundial`. Podés cambiarla con `DATABASE_URL`.
 
 ### Variables de entorno (opcional)
 
@@ -31,10 +42,12 @@ Abrí http://localhost:8080
 |----------|-------------|
 | `PORT` | Puerto (default `8080`) |
 | `JWT_SECRET` | Secreto para tokens JWT (cambiar en producción) |
+| `DATABASE_URL` | Cadena de conexión PostgreSQL |
+| `PGSSLMODE` | `disable` para desactivar SSL (desarrollo local) |
 
 ### Administradores
 
-El rol de administrador vive en la base de datos (`users.is_admin`). El JWT solo identifica al usuario; los permisos se consultan en cada petición contra SQLite.
+El rol de administrador vive en la base de datos (`users.is_admin`). El JWT solo identifica al usuario; los permisos se consultan en cada petición contra PostgreSQL.
 
 1. Registrate en la app con el email que quieras usar como admin.
 2. Promové ese usuario:
@@ -49,10 +62,10 @@ Para quitar permisos:
 npm run set-admin -- tu@email.com --revoke
 ```
 
-También podés actualizar la fila directamente en `data/mundial.db`:
+También podés actualizar la fila directamente en PostgreSQL:
 
 ```sql
-UPDATE users SET is_admin = 1 WHERE email = 'tu@email.com';
+UPDATE users SET is_admin = TRUE WHERE email = 'tu@email.com';
 ```
 
 Iniciá sesión de nuevo (o abrí **Administración** para refrescar el perfil) y verás la pestaña de administración.
@@ -84,7 +97,8 @@ Iniciá sesión de nuevo (o abrí **Administración** para refrescar el perfil) 
 
 | Archivo | Descripción |
 |---------|-------------|
-| `server/` | API Express + SQLite |
+| `server/` | API Express + PostgreSQL |
+| `docker-compose.yml` | PostgreSQL local para desarrollo |
 | `api.js` | Cliente HTTP |
 | `auth-ui.js` | Login, registro y barra de usuario |
 | `fixture.js` | Fixture + formularios de pronóstico |
@@ -92,15 +106,15 @@ Iniciá sesión de nuevo (o abrí **Administración** para refrescar el perfil) 
 
 ## Deploy en Azure
 
-La app se despliega en **Azure Container Apps** con SQLite persistido en **Azure Files**. El CI/CD corre con **GitHub Actions** (OIDC, sin contraseñas en el repo).
+La app se despliega en **Azure Container Apps** con **Azure Database for PostgreSQL Flexible Server**. El CI/CD corre con **GitHub Actions** (OIDC, sin contraseñas en el repo).
 
 ### Archivos de infraestructura
 
 | Archivo | Descripción |
 |---------|-------------|
-| `Dockerfile` | Imagen de producción (Node 20 + better-sqlite3) |
-| `infra/main.bicep` | Container Apps, ACR, Storage, Log Analytics |
-| `infra/main.parameters.json` | Parámetros de ejemplo (editar `jwtSecret`) |
+| `Dockerfile` | Imagen de producción (Node 20) |
+| `infra/main.bicep` | Container Apps, ACR, PostgreSQL, Log Analytics |
+| `infra/main.parameters.json` | Parámetros de ejemplo (editar `jwtSecret` y `postgresAdminPassword`) |
 | `.github/workflows/azure-deploy.yml` | Build en ACR + deploy automático |
 
 ### 1. Prerrequisitos
@@ -116,6 +130,7 @@ La app se despliega en **Azure Container Apps** con SQLite persistido en **Azure
 RESOURCE_GROUP="rg-mundial2026"
 LOCATION="westeurope"
 JWT_SECRET="$(openssl rand -base64 48)"
+POSTGRES_PASSWORD="$(openssl rand -base64 24)"
 
 az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 
@@ -123,7 +138,7 @@ az deployment group create \
   --name main \
   --resource-group "$RESOURCE_GROUP" \
   --template-file infra/main.bicep \
-  --parameters baseName=mundial2026 location="$LOCATION" jwtSecret="$JWT_SECRET"
+  --parameters baseName=mundial2026 location="$LOCATION" jwtSecret="$JWT_SECRET" postgresAdminPassword="$POSTGRES_PASSWORD"
 ```
 
 Guardá los outputs del deploy:
@@ -135,7 +150,7 @@ az deployment group show \
   --query properties.outputs
 ```
 
-> La primera vez la Container App arranca con una imagen placeholder de Microsoft. El workflow de GitHub la reemplaza en el primer deploy.
+> La primera vez la Container App arranca con una imagen placeholder de Microsoft (sin `/api/health`). El workflow de GitHub la reemplaza en el primer deploy con tu app real.
 
 ### 3. Configurar GitHub Actions (OIDC)
 
@@ -213,8 +228,14 @@ az containerapp exec \
 ### Desarrollo local con Docker
 
 ```bash
+docker compose up -d
 docker build -t mundial-2026 .
-docker run --rm -p 8080:8080 -v "$(pwd)/data:/app/data" -e JWT_SECRET=dev-secret mundial-2026
+docker run --rm -p 8080:8080 \
+  --network github-test_default \
+  -e JWT_SECRET=dev-secret \
+  -e DATABASE_URL=postgresql://mundial:mundial@db:5432/mundial \
+  -e PGSSLMODE=disable \
+  mundial-2026
 ```
 
-La base SQLite se monta en `/app/data` dentro del contenedor (mismo path que en Azure Files).
+> Ajustá `--network` al nombre que muestre `docker compose ps` si difiere del proyecto.
