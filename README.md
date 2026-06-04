@@ -8,7 +8,7 @@ Sitio del Mundial FIFA 2026: cuenta regresiva, fixture de fase de grupos y **pro
 - **Fixture** con los 12 grupos y 72 partidos (hora Argentina)
 - **Registro e inicio de sesión** (email + contraseña)
 - **Guardar pronósticos** de resultado (goles local : visitante) por partido
-- **Panel de administración**: ver todos los pronósticos, cargar resultados reales y ranking de aciertos
+- **Panel de administración**: ver todos los pronósticos, consultar resultados de la API y ranking de aciertos
 
 ## Requisitos
 
@@ -44,6 +44,13 @@ Por defecto la app usa `postgresql://mundial:mundial@localhost:5432/mundial`. Po
 | `JWT_SECRET` | Secreto para tokens JWT (cambiar en producción) |
 | `DATABASE_URL` | Cadena de conexión PostgreSQL |
 | `PGSSLMODE` | `disable` para desactivar SSL (desarrollo local) |
+| `WORLDCUP_API_BASE_URL` | Base URL de la API de resultados (default `https://worldcup26.ir`) |
+| `LIVE_SYNC_ENABLED` | `false` para desactivar sync automático |
+| `LIVE_SYNC_WATCH_INTERVAL_MS` | Intervalo de detección pre-live (default 60000) |
+| `LIVE_SYNC_LIVE_INTERVAL_MS` | Intervalo durante partido en juego (default 60000) |
+| `LIVE_SYNC_MATCH_WINDOW_HOURS` | Ventana máxima post-kickoff para polling (default 2.5) |
+| `LOG_LEVEL` | Nivel de log: `debug`, `info`, `warn`, `error` (default `info` en prod, `debug` en dev) |
+| `LOG_PRETTY` | `true` para salida legible en consola; en producción dejar sin definir (JSON a stdout) |
 
 ### Administradores
 
@@ -81,14 +88,22 @@ Iniciá sesión de nuevo (o abrí **Administración** para refrescar el perfil) 
 | PUT | `/api/predictions/:matchId` | Guardar/actualizar pronóstico |
 | DELETE | `/api/predictions/:matchId` | Borrar pronóstico |
 
+### Resultados en vivo y ranking (público)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/matches/live` | Marcadores y estado de partidos (desde BD local) |
+| GET | `/api/leaderboard` | Ranking público de pronosticadores |
+
+Los resultados se sincronizan automáticamente desde [worldcup26.ir](https://worldcup26.ir/api-docs/#/) durante la ventana de cada partido (un poller por partido activo, cada 60 s). No hay carga manual por administrador.
+
 ### API Admin (requiere usuario admin)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET | `/api/admin/dashboard` | Stats + ranking |
 | GET | `/api/admin/predictions` | Todos los pronósticos con puntos |
-| GET | `/api/admin/results` | Resultados reales + partidos |
-| PUT | `/api/admin/results/:matchId` | Cargar resultado real |
+| GET | `/api/admin/results` | Consulta de resultados reales + partidos (solo lectura) |
 | GET | `/api/admin/leaderboard` | Ranking de pronosticadores |
 
 **Puntuación:** 3 pts resultado exacto · 1 pt acierto de ganador o empate.
@@ -213,6 +228,33 @@ az containerapp show \
   --resource-group "$RESOURCE_GROUP" \
   --query properties.configuration.ingress.fqdn -o tsv
 ```
+
+### Logs en Azure Log Analytics
+
+El servidor escribe logs estructurados (JSON) a stdout. Container Apps los envía al workspace de Log Analytics definido en Bicep.
+
+Consultas KQL de ejemplo:
+
+```kusto
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(1h)
+| extend parsed = parse_json(Log_s)
+| where isnotempty(parsed.component)
+| project TimeGenerated, parsed.component, parsed.level, parsed.msg, parsed.matchId
+| order by TimeGenerated desc
+```
+
+Errores y warnings del sync en vivo:
+
+```kusto
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(24h)
+| extend parsed = parse_json(Log_s)
+| where parsed.component == "live-sync" and parsed.level >= 40
+| project TimeGenerated, parsed.msg, parsed.matchId, parsed.err
+```
+
+> En producción no uses `LOG_PRETTY=true`: cada línea debe ser JSON válido para que `parse_json` funcione.
 
 ### 5. Promover administrador en producción
 

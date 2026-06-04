@@ -14,8 +14,11 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
-    "pg": "^8.16.0",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.0",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "pino-pretty": "^13.0.0"
   }
 }

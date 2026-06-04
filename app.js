@@ -7,6 +7,8 @@ const minutesEl = document.getElementById("minutes");
 const secondsEl = document.getElementById("seconds");
 const statusEl = document.getElementById("status");
 
+let activePanel = "countdown";
+
 function pad(n) {
   return String(n).padStart(2, "0");
 }
@@ -42,23 +44,34 @@ function updateCountdown() {
   statusEl.classList.remove("status--done");
 }
 
-function initTabs() {
+function switchPanel(target) {
+  if (activePanel === target) return;
+
+  window.dispatchEvent(new CustomEvent("panel:close", { detail: { panel: activePanel } }));
+
   const tabs = document.querySelectorAll(".tabs .tab");
   const panels = document.querySelectorAll(".panel");
 
   tabs.forEach((tab) => {
+    const active = tab.dataset.panel === target;
+    tab.classList.toggle("tab--active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  panels.forEach((panel) => {
+    const show = panel.id === `panel-${target}`;
+    panel.classList.toggle("panel--active", show);
+    panel.hidden = !show;
+  });
+
+  activePanel = target;
+  window.dispatchEvent(new CustomEvent("panel:open", { detail: { panel: target } }));
+}
+
+function initTabs() {
+  document.querySelectorAll(".tabs .tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-      const target = tab.dataset.panel;
-      tabs.forEach((t) => {
-        const active = t === tab;
-        t.classList.toggle("tab--active", active);
-        t.setAttribute("aria-selected", active ? "true" : "false");
-      });
-      panels.forEach((panel) => {
-        const show = panel.id === `panel-${target}`;
-        panel.classList.toggle("panel--active", show);
-        panel.hidden = !show;
-      });
+      switchPanel(tab.dataset.panel);
     });
   });
 }

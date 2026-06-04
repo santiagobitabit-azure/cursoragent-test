@@ -74,22 +74,26 @@ const AuthAPI = {
     return this.request("/api/admin/results");
   },
 
-  adminSaveResult(matchId, homeScore, awayScore) {
-    return this.request(`/api/admin/results/${matchId}`, {
-      method: "PUT",
-      body: JSON.stringify({ homeScore, awayScore }),
-    });
-  },
-
-  adminDeleteResult(matchId) {
-    return fetch(`/api/admin/results/${matchId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${this.getToken()}` },
-    });
+  adminSyncResults() {
+    return this.request("/api/admin/sync-results", { method: "POST" });
   },
 
   adminLeaderboard() {
     return this.request("/api/admin/leaderboard");
+  },
+
+  getLiveResults() {
+    return fetch("/api/matches/live").then((r) => {
+      if (!r.ok) throw new Error("No se pudieron cargar los resultados.");
+      return r.json();
+    });
+  },
+
+  getLeaderboard() {
+    return fetch("/api/leaderboard").then((r) => {
+      if (!r.ok) throw new Error("No se pudo cargar el ranking.");
+      return r.json();
+    });
   },
 };
 

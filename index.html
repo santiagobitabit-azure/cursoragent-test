@@ -41,6 +41,17 @@
         </button>
         <button
           type="button"
+          class="tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-leaderboard"
+          id="tab-leaderboard"
+          data-panel="leaderboard"
+        >
+          Ranking
+        </button>
+        <button
+          type="button"
           class="tab tab--admin"
           role="tab"
           aria-selected="false"
@@ -148,6 +159,23 @@
       </section>
 
       <section
+        id="panel-leaderboard"
+        class="panel"
+        role="tabpanel"
+        aria-labelledby="tab-leaderboard"
+        hidden
+      >
+        <header class="fixture-header">
+          <p class="eyebrow">Pronosticadores</p>
+          <h1>Ranking</h1>
+          <p class="fixture-sub">
+            Puntos por aciertos · Se actualiza al finalizar cada partido
+          </p>
+        </header>
+        <div id="leaderboard-content" class="leaderboard-content"></div>
+      </section>
+
+      <section
         id="panel-admin"
         class="panel panel--admin"
         role="tabpanel"
@@ -196,8 +224,10 @@
     <script src="fixture-data.js"></script>
     <script src="api.js"></script>
     <script src="auth-ui.js"></script>
+    <script src="scoring-ui.js"></script>
     <script src="app.js"></script>
     <script src="fixture.js"></script>
+    <script src="leaderboard-ui.js"></script>
     <script src="admin-ui.js"></script>
   </body>
 </html>

@@ -3,8 +3,11 @@ const bcrypt = require("bcryptjs");
 const { pool } = require("../db");
 const { signToken, JWT_SECRET } = require("../middleware/auth");
 const jwt = require("jsonwebtoken");
+const logger = require("../logger");
+const { maskEmail } = logger;
 
 const router = express.Router();
+const log = logger.child({ component: "auth" });
 
 function userResponse(row) {
   return {
@@ -22,12 +25,15 @@ router.post("/register", async (req, res) => {
   const pass = String(password || "");
 
   if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    log.warn({ reason: "invalid_email", email: maskEmail(trimmedEmail) }, "register failed");
     return res.status(400).json({ error: "Ingresá un email válido." });
   }
   if (name.length < 2) {
+    log.warn({ reason: "invalid_display_name", email: maskEmail(trimmedEmail) }, "register failed");
     return res.status(400).json({ error: "El nombre debe tener al menos 2 caracteres." });
   }
   if (pass.length < 6) {
+    log.warn({ reason: "invalid_password", email: maskEmail(trimmedEmail) }, "register failed");
     return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
   }
 
@@ -41,9 +47,11 @@ router.post("/register", async (req, res) => {
     );
     const user = rows[0];
     const token = signToken(user);
+    log.info({ userId: user.id, email: maskEmail(trimmedEmail) }, "user registered");
     res.status(201).json({ token, user: userResponse(user) });
   } catch (err) {
     if (err.code === "23505") {
+      log.warn({ reason: "duplicate_email", email: maskEmail(trimmedEmail) }, "register failed");
       return res.status(409).json({ error: "Ya existe una cuenta con ese email." });
     }
     throw err;
@@ -61,6 +69,7 @@ router.post("/login", async (req, res) => {
   );
   const row = rows[0];
   if (!row || !bcrypt.compareSync(pass, row.password_hash)) {
+    log.warn({ reason: "invalid_credentials", email: maskEmail(trimmedEmail) }, "login failed");
     return res.status(401).json({ error: "Email o contraseña incorrectos." });
   }
 
@@ -70,6 +79,7 @@ router.post("/login", async (req, res) => {
   );
   const user = userRows[0];
   const token = signToken(user);
+  log.info({ userId: user.id, email: maskEmail(trimmedEmail) }, "user logged in");
   res.json({ token, user: userResponse(user) });
 });
 
@@ -88,6 +98,7 @@ router.get("/me", async (req, res) => {
     if (!user) return res.status(401).json({ error: "Usuario no encontrado." });
     res.json({ user: userResponse(user) });
   } catch {
+    log.warn({ reason: "invalid_session" }, "auth me failed");
     return res.status(401).json({ error: "Sesión inválida." });
   }
 });

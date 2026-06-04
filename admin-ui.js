@@ -1,6 +1,7 @@
 const ADMIN_VIEWS = ["ranking", "predictions", "results"];
 let adminView = "ranking";
 let adminData = { dashboard: null, predictions: [], results: {}, matches: [] };
+let syncStatus = { loading: false, message: "", isError: false };
 
 function teamName(id) {
   return (typeof TEAM_NAMES_ES !== "undefined" && TEAM_NAMES_ES[id]) || id;
@@ -17,13 +18,6 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function scoreBadge(type, points) {
-  if (points === null) return '<span class="badge badge--muted">Sin resultado</span>';
-  if (type === "exact") return `<span class="badge badge--gold">+${points} exacto</span>`;
-  if (type === "outcome") return `<span class="badge badge--ok">+${points} resultado</span>`;
-  return `<span class="badge badge--miss">0 pts</span>`;
 }
 
 function updateAdminTabVisibility() {
@@ -57,7 +51,7 @@ function renderRanking() {
 
   if (!board.length) {
     return `
-      <p class="admin-empty">Todavía no hay puntos: cargá resultados reales y asegurate de que los usuarios hayan pronosticado.</p>
+      <p class="admin-empty">Todavía no hay puntos: aún no hay partidos finalizados con resultado de la API, o los usuarios no han pronosticado.</p>
       <p class="admin-hint">Puntos: <strong>3</strong> resultado exacto · <strong>1</strong> acierto de ganador o empate</p>`;
   }
 
@@ -79,7 +73,7 @@ function renderRanking() {
     <div class="admin-stats">
       <div class="stat-card"><span class="stat-card__n">${stats?.users ?? 0}</span><span class="stat-card__l">Usuarios</span></div>
       <div class="stat-card"><span class="stat-card__n">${stats?.predictions ?? 0}</span><span class="stat-card__l">Pronósticos</span></div>
-      <div class="stat-card"><span class="stat-card__n">${stats?.matchesWithResult ?? 0}/${stats?.totalMatches ?? 72}</span><span class="stat-card__l">Resultados cargados</span></div>
+      <div class="stat-card"><span class="stat-card__n">${stats?.matchesWithResult ?? 0}/${stats?.totalMatches ?? 72}</span><span class="stat-card__l">Partidos finalizados (API)</span></div>
     </div>
     <p class="admin-hint">Puntos: <strong>3</strong> resultado exacto · <strong>1</strong> acierto de ganador o empate</p>
     <div class="admin-table-wrap">
@@ -131,7 +125,7 @@ function renderPredictionsTable() {
       <td>${teamName(p.home)} vs ${teamName(p.away)}</td>
       <td class="num">${p.prediction.homeScore} : ${p.prediction.awayScore}</td>
       <td class="num">${p.result ? `${p.result.homeScore} : ${p.result.awayScore}` : "—"}</td>
-      <td>${scoreBadge(p.scoreType, p.points)}</td>
+      <td>${renderScoreBadge(p.scoreType, p.points)}</td>
     </tr>`
     )
     .join("");
@@ -163,7 +157,27 @@ function renderPredictionsTable() {
     </div>`;
 }
 
-function renderResultsForm() {
+function formatSyncedAt(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("es-AR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+}
+
+function statusBadge(status) {
+  if (status === "live") return '<span class="badge badge--live">En vivo</span>';
+  if (status === "finished") return '<span class="badge badge--finished">Final</span>';
+  if (status) return `<span class="badge badge--muted">${escapeHtml(status)}</span>`;
+  return '<span class="badge badge--muted">Sin dato</span>';
+}
+
+function renderResultsReadOnly() {
   const matches = adminData.matches.length
     ? adminData.matches
     : typeof GROUP_STAGE_MATCHES !== "undefined"
@@ -174,27 +188,37 @@ function renderResultsForm() {
   const cards = matches
     .map((m) => {
       const r = results[m.id];
+      const score =
+        r && Number.isInteger(r.homeScore) && Number.isInteger(r.awayScore)
+          ? `${r.homeScore} : ${r.awayScore}`
+          : "—";
+      const apiBadge = r
+        ? '<span class="badge badge--ok">API</span>'
+        : '<span class="badge badge--muted">Pendiente</span>';
       return `
-      <form class="result-form" data-match-id="${m.id}">
+      <article class="result-form result-form--readonly" data-match-id="${m.id}">
         <div class="result-form__info">
           <span class="result-form__id">${m.id}</span>
           <strong>Grupo ${m.group}</strong> · Fecha ${m.matchday}<br />
           ${teamName(m.home)} vs ${teamName(m.away)}
+          <div class="result-form__meta">${apiBadge} ${statusBadge(r?.status)}</div>
         </div>
-        <div class="result-form__inputs">
-          <input type="number" min="0" max="99" name="home" value="${r?.homeScore ?? ""}" placeholder="0" aria-label="Goles local" />
-          <span>:</span>
-          <input type="number" min="0" max="99" name="away" value="${r?.awayScore ?? ""}" placeholder="0" aria-label="Goles visitante" />
-          <button type="submit" class="btn btn--small btn--primary">Guardar</button>
-          ${r ? '<button type="button" class="btn btn--small btn--ghost btn-clear-result">Borrar</button>' : ""}
+        <div class="result-form__score-readonly">
+          <span class="result-form__score-value">${score}</span>
+          <span class="result-form__sync muted">Última sync: ${formatSyncedAt(r?.syncedAt)}</span>
         </div>
-        <span class="result-form__status" role="status"></span>
-      </form>`;
+      </article>`;
     })
     .join("");
 
   return `
-    <p class="admin-hint">Cargá el resultado oficial de cada partido. El ranking se actualiza automáticamente.</p>
+    <div class="admin-filters admin-filters--sync">
+      <button type="button" class="btn btn--small btn--primary" id="admin-sync-results"${syncStatus.loading ? " disabled" : ""}>
+        ${syncStatus.loading ? "Actualizando…" : "Actualizar desde API"}
+      </button>
+      ${syncStatus.message ? `<span class="admin-sync-status${syncStatus.isError ? " admin-sync-status--err" : " admin-sync-status--ok"}">${escapeHtml(syncStatus.message)}</span>` : ""}
+    </div>
+    <p class="admin-hint">Los resultados se sincronizan automáticamente desde la API externa. Podés forzar una actualización manual con el botón de arriba.</p>
     <div class="result-forms">${cards}</div>`;
 }
 
@@ -206,7 +230,7 @@ function renderAdminPanel() {
 
   if (adminView === "ranking") root.innerHTML = renderRanking();
   else if (adminView === "predictions") root.innerHTML = renderPredictionsTable();
-  else root.innerHTML = renderResultsForm();
+  else root.innerHTML = renderResultsReadOnly();
 
   bindAdminPanelEvents(root);
 }
@@ -214,42 +238,35 @@ function renderAdminPanel() {
 function bindAdminPanelEvents(root) {
   root.querySelector("#admin-pred-search")?.addEventListener("input", () => renderAdminPanel());
   root.querySelector("#admin-pred-filter")?.addEventListener("change", () => renderAdminPanel());
+  root.querySelector("#admin-sync-results")?.addEventListener("click", handleSyncResults);
+}
 
-  root.querySelectorAll(".result-form").forEach((form) => {
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const matchId = form.dataset.matchId;
-      const status = form.querySelector(".result-form__status");
-      const home = Number(form.querySelector('[name="home"]').value);
-      const away = Number(form.querySelector('[name="away"]').value);
-      if (!Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0) {
-        status.textContent = "Completá ambos goles";
-        return;
-      }
-      status.textContent = "Guardando…";
-      try {
-        await AuthAPI.adminSaveResult(matchId, home, away);
-        status.textContent = "Guardado ✓";
-        await loadAdminData();
-        renderAdminPanel();
-      } catch (err) {
-        status.textContent = err.message;
-      }
-    });
+async function handleSyncResults() {
+  if (syncStatus.loading) return;
 
-    form.querySelector(".btn-clear-result")?.addEventListener("click", async () => {
-      const matchId = form.dataset.matchId;
-      const status = form.querySelector(".result-form__status");
-      status.textContent = "Borrando…";
-      try {
-        await AuthAPI.adminDeleteResult(matchId);
-        await loadAdminData();
-        renderAdminPanel();
-      } catch (err) {
-        status.textContent = err.message;
-      }
-    });
-  });
+  syncStatus = { loading: true, message: "", isError: false };
+  renderAdminPanel();
+
+  try {
+    const data = await AuthAPI.adminSyncResults();
+    const parts = [];
+    if (data.synced) parts.push(`${data.synced} actualizado(s)`);
+    if (data.unchanged) parts.push(`${data.unchanged} sin cambios`);
+    if (data.errors?.length) parts.push(`${data.errors.length} error(es)`);
+
+    syncStatus = {
+      loading: false,
+      message: parts.length ? parts.join(" · ") : "Sin partidos en vivo o finalizados en la API.",
+      isError: !!data.errors?.length,
+    };
+
+    await loadAdminData();
+    window.dispatchEvent(new CustomEvent("results:synced"));
+  } catch (err) {
+    syncStatus = { loading: false, message: err.message, isError: true };
+  }
+
+  renderAdminPanel();
 }
 
 async function loadAdminData() {
@@ -293,17 +310,10 @@ function initAdmin() {
     updateAdminTabVisibility();
   });
 
-  document.getElementById("tab-admin")?.addEventListener("click", () => {
-    if (window.AuthState?.getUser()?.isAdmin) onAdminPanelOpen();
-  });
-
-  const tabs = document.querySelectorAll(".tabs .tab");
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      if (tab.dataset.panel === "admin" && window.AuthState?.getUser()?.isAdmin) {
-        onAdminPanelOpen();
-      }
-    });
+  window.addEventListener("panel:open", (e) => {
+    if (e.detail?.panel === "admin" && window.AuthState?.getUser()?.isAdmin) {
+      onAdminPanelOpen();
+    }
   });
 }
 
