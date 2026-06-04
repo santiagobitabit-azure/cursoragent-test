@@ -49,6 +49,20 @@ async function init() {
     );
   `);
 
+  await pool.query(`
+    ALTER TABLE match_results ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'api';
+    ALTER TABLE match_results ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE match_results ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'scheduled';
+    ALTER TABLE match_results ADD COLUMN IF NOT EXISTS time_elapsed TEXT;
+    ALTER TABLE match_results ADD COLUMN IF NOT EXISTS synced_at TIMESTAMPTZ;
+  `);
+
+  await pool.query(`
+    UPDATE match_results
+    SET locked = FALSE, source = 'api'
+    WHERE locked = TRUE OR source = 'admin'
+  `);
+
   initialized = true;
 }
 

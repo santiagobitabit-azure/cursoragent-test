@@ -1,7 +1,11 @@
 const TZ_AR = "America/Argentina/Buenos_Aires";
 const GROUP_IDS = "ABCDEFGHIJKL".split("");
+const LIVE_POLL_MS = 60_000;
 
 let currentFilter = "all";
+let liveResults = {};
+let pollTimer = null;
+let fixturePanelActive = false;
 
 const dateFmt = new Intl.DateTimeFormat("es-AR", {
   weekday: "short",
@@ -30,11 +34,38 @@ function involvesArgentina(match) {
   return match.home === "Argentina" || match.away === "Argentina";
 }
 
-function renderPredictionForm(match) {
-  if (!window.AuthState?.isLoggedIn()) {
-    return `<p class="prediction-hint">Iniciá sesión para pronosticar</p>`;
+function isPredictionClosed(match) {
+  const result = liveResults[match.id];
+  if (result?.status === "live" || result?.status === "finished") return true;
+  const kickoff = new Date(match.kickoff).getTime();
+  return Date.now() >= kickoff - 5 * 60 * 1000;
+}
+
+function renderLiveScore(match) {
+  const result = liveResults[match.id];
+  if (!result) return "";
+
+  if (result.status === "live") {
+    const minute = result.timeElapsed ? ` · ${result.timeElapsed}'` : "";
+    return `
+      <div class="match__live">
+        <span class="match__badge match__badge--live">EN VIVO${minute}</span>
+        <span class="match__score-live">${result.homeScore} : ${result.awayScore}</span>
+      </div>`;
   }
 
+  if (result.status === "finished") {
+    return `
+      <div class="match__live">
+        <span class="match__badge match__badge--finished">FINAL</span>
+        <span class="match__score-live">${result.homeScore} : ${result.awayScore}</span>
+      </div>`;
+  }
+
+  return "";
+}
+
+function renderPredictionForm(match) {
   const pred = window.AuthState.getPredictions()[match.id];
   const homeVal = pred?.homeScore ?? "";
   const awayVal = pred?.awayScore ?? "";
@@ -52,6 +83,48 @@ function renderPredictionForm(match) {
     </form>`;
 }
 
+function renderPredictionSummary(match) {
+  const pred = window.AuthState.getPredictions()[match.id];
+  if (!pred) {
+    return `<p class="prediction-hint prediction-hint--closed prediction-summary--empty">No guardaste pronóstico para este partido</p>`;
+  }
+
+  const result = liveResults[match.id];
+  let badge = "";
+  if (result?.status === "finished") {
+    const { points, type } = scorePrediction(
+      pred.homeScore,
+      pred.awayScore,
+      result.homeScore,
+      result.awayScore
+    );
+    badge = renderScoreBadge(type, points);
+  }
+
+  return `
+    <div class="prediction-summary">
+      <span class="prediction-summary__label">Tu pronóstico</span>
+      <span class="prediction-summary__score">${pred.homeScore} : ${pred.awayScore}</span>
+      ${badge}
+    </div>`;
+}
+
+function renderPredictionSection(match) {
+  if (!window.AuthState?.isLoggedIn()) {
+    return `<p class="prediction-hint">Iniciá sesión para pronosticar</p>`;
+  }
+
+  if (window.AuthState.isAdmin()) {
+    return "";
+  }
+
+  if (!isPredictionClosed(match)) {
+    return renderPredictionForm(match);
+  }
+
+  return renderPredictionSummary(match);
+}
+
 function renderTeams(groupId) {
   const teams = WORLD_CUP_GROUPS[groupId];
   return teams
@@ -64,21 +137,26 @@ function renderTeams(groupId) {
 
 function renderMatch(match) {
   const when = new Date(match.kickoff);
+  const result = liveResults[match.id];
   const argClass = involvesArgentina(match) ? " match--arg" : "";
+  const liveClass = result?.status === "live" ? " match--live" : "";
   const hasPred =
-    window.AuthState?.isLoggedIn() && window.AuthState.getPredictions()[match.id];
+    window.AuthState?.isLoggedIn() &&
+    !window.AuthState.isAdmin() &&
+    window.AuthState.getPredictions()[match.id];
   const savedClass = hasPred ? " match--saved" : "";
 
   return `
-    <li class="match${argClass}${savedClass}" data-match-id="${match.id}">
+    <li class="match${argClass}${liveClass}${savedClass}" data-match-id="${match.id}">
       <div class="match__meta">
         <span class="match__date">${dateFmt.format(when)}</span>
         <span class="match__time">${timeFmt.format(when)} hs</span>
         <span class="match__md">Fecha ${match.matchday}</span>
       </div>
       <p class="match__teams">${teamLabel(match.home)} <span class="vs">vs</span> ${teamLabel(match.away)}</p>
+      ${renderLiveScore(match)}
       <p class="match__venue">${venueLabel(match.venue)}</p>
-      ${renderPredictionForm(match)}
+      ${renderPredictionSection(match)}
     </li>`;
 }
 
@@ -107,6 +185,54 @@ function renderFixture(filterGroup = "all") {
   const groups = filterGroup === "all" ? GROUP_IDS : [filterGroup];
   grid.innerHTML = groups.map(renderGroupCard).join("");
   bindPredictionForms(grid);
+}
+
+function stopLivePolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function scheduleLivePolling(activeMatches) {
+  stopLivePolling();
+  if (!fixturePanelActive || !activeMatches?.length) return;
+  pollTimer = setInterval(() => loadLiveResults(), LIVE_POLL_MS);
+}
+
+async function loadLiveResults() {
+  try {
+    const prevFinished = new Set(
+      Object.entries(liveResults)
+        .filter(([, r]) => r.status === "finished")
+        .map(([id]) => id)
+    );
+
+    const data = await AuthAPI.getLiveResults();
+    liveResults = data.results || {};
+    renderFixture(currentFilter);
+    scheduleLivePolling(data.sync?.activeMatches);
+
+    for (const [matchId, result] of Object.entries(liveResults)) {
+      if (result.status === "finished" && !prevFinished.has(matchId)) {
+        window.dispatchEvent(
+          new CustomEvent("match:finished", { detail: { matchId, result } })
+        );
+      }
+    }
+  } catch {
+    /* silencioso en polling */
+  }
+}
+
+async function onFixturePanelOpen() {
+  fixturePanelActive = true;
+  await loadLiveResults();
+}
+
+function onFixturePanelClose() {
+  fixturePanelActive = false;
+  stopLivePolling();
 }
 
 async function handlePredictionSubmit(form) {
@@ -170,7 +296,21 @@ function initFixture() {
     renderFixture(currentFilter);
   });
 
+  window.addEventListener("results:synced", () => {
+    if (fixturePanelActive) loadLiveResults();
+  });
+
+  window.addEventListener("panel:open", (e) => {
+    if (e.detail?.panel === "fixture") onFixturePanelOpen();
+  });
+
+  window.addEventListener("panel:close", (e) => {
+    if (e.detail?.panel === "fixture") onFixturePanelClose();
+  });
+
   renderFixture("all");
 }
 
+window.onFixturePanelOpen = onFixturePanelOpen;
+window.onFixturePanelClose = onFixturePanelClose;
 initFixture();

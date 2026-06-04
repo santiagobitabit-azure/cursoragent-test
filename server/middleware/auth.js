@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const { pool } = require("../db");
+const logger = require("../logger");
 
+const log = logger.child({ component: "auth" });
 const JWT_SECRET = process.env.JWT_SECRET || "mundial-2026-dev-secret-change-in-production";
 
 function signToken(user) {
@@ -36,6 +38,7 @@ function requireAdmin(req, res, next) {
   attachUser(req, res, (err) => {
     if (err) return;
     if (!req.user?.is_admin) {
+      log.warn({ userId: req.userId, path: req.path, method: req.method }, "admin access denied");
       return res.status(403).json({ error: "Acceso solo para administradores." });
     }
     next();

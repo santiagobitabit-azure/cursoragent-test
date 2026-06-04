@@ -2,9 +2,11 @@ const express = require("express");
 const { pool } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const { loadMatches } = require("../matches");
+const { getResult } = require("../services/match-results");
+const { canPredict } = require("../utils/predictions-open");
 
 const router = express.Router();
-const { ids: matchIds } = loadMatches();
+const { ids: matchIds, byId } = loadMatches();
 
 router.use(requireAuth);
 
@@ -28,6 +30,13 @@ router.put("/:matchId", async (req, res) => {
   const { matchId } = req.params;
   if (!matchIds.has(matchId)) {
     return res.status(400).json({ error: "Partido no válido." });
+  }
+
+  const match = byId[matchId];
+  const existingResult = await getResult(matchId);
+  const open = canPredict(match, existingResult);
+  if (!open.ok) {
+    return res.status(403).json({ error: open.reason });
   }
 
   const homeScore = Number(req.body?.homeScore);
@@ -61,6 +70,14 @@ router.delete("/:matchId", async (req, res) => {
   if (!matchIds.has(matchId)) {
     return res.status(400).json({ error: "Partido no válido." });
   }
+
+  const match = byId[matchId];
+  const existingResult = await getResult(matchId);
+  const open = canPredict(match, existingResult);
+  if (!open.ok) {
+    return res.status(403).json({ error: open.reason });
+  }
+
   await pool.query("DELETE FROM predictions WHERE user_id = $1 AND match_id = $2", [
     req.userId,
     matchId,
