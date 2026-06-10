@@ -6,7 +6,7 @@ let cached = null;
 function loadMatches() {
   if (cached) return cached;
   const content = fs.readFileSync(
-    path.join(__dirname, "..", "fixture-data.js"),
+    path.join(__dirname, "..", "public", "fixture-data.js"),
     "utf8"
   );
   const marker = "const GROUP_STAGE_MATCHES = ";

@@ -18,7 +18,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY server ./server
 COPY scripts ./scripts
-COPY index.html app.js api.js auth-ui.js admin-ui.js fixture.js fixture-data.js styles.css ./
+COPY public ./public
 
 EXPOSE 8080
 

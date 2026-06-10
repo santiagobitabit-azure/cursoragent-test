@@ -56,11 +56,13 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/matches", matchesRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 
-app.use(express.static(path.join(__dirname, "..")));
+const publicDir = path.join(__dirname, "..", "public");
+
+app.use(express.static(publicDir));
 
 app.use((req, res, next) => {
   if (req.method !== "GET" || req.path.startsWith("/api")) return next();
-  res.sendFile(path.join(__dirname, "..", "index.html"));
+  res.sendFile(path.join(publicDir, "index.html"));
 });
 
 app.use((err, req, res, next) => {
