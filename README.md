@@ -113,11 +113,12 @@ Los resultados se sincronizan automáticamente desde [worldcup26.ir](https://wor
 | Archivo | Descripción |
 |---------|-------------|
 | `server/` | API Express + PostgreSQL |
+| `public/` | Frontend estático (HTML, CSS, JS del navegador) |
 | `docker-compose.yml` | PostgreSQL local para desarrollo |
-| `api.js` | Cliente HTTP |
-| `auth-ui.js` | Login, registro y barra de usuario |
-| `fixture.js` | Fixture + formularios de pronóstico |
-| `fixture-data.js` | Grupos, partidos e IDs |
+| `public/api.js` | Cliente HTTP |
+| `public/auth-ui.js` | Login, registro y barra de usuario |
+| `public/fixture.js` | Fixture + formularios de pronóstico |
+| `public/fixture-data.js` | Grupos, partidos e IDs |
 
 ## Deploy en Azure
 
