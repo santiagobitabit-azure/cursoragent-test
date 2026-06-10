@@ -93,15 +93,13 @@ function renderRanking() {
     </div>`;
 }
 
-function renderPredictionsTable() {
-  const filter = document.getElementById("admin-pred-filter")?.value || "all";
+function getFilteredPredictions(search, filter) {
   let list = adminData.predictions;
 
   if (filter !== "all") {
     list = list.filter((p) => p.group === filter);
   }
 
-  const search = (document.getElementById("admin-pred-search")?.value || "").toLowerCase();
   if (search) {
     list = list.filter(
       (p) =>
@@ -112,11 +110,11 @@ function renderPredictionsTable() {
     );
   }
 
-  if (!list.length) {
-    return '<p class="admin-empty">No hay pronósticos para mostrar.</p>';
-  }
+  return list;
+}
 
-  const rows = list
+function renderPredictionRows(list) {
+  return list
     .map(
       (p) => `
     <tr>
@@ -129,7 +127,31 @@ function renderPredictionsTable() {
     </tr>`
     )
     .join("");
+}
 
+function updatePredictionsTableBody(root) {
+  const search = (root.querySelector("#admin-pred-search")?.value || "").toLowerCase();
+  const filter = root.querySelector("#admin-pred-filter")?.value || "all";
+  const list = getFilteredPredictions(search, filter);
+
+  const emptyEl = root.querySelector("#admin-pred-empty");
+  const tableWrap = root.querySelector("#admin-pred-table-wrap");
+  const tbody = root.querySelector("#admin-pred-tbody");
+  if (!emptyEl || !tableWrap || !tbody) return;
+
+  if (!list.length) {
+    emptyEl.hidden = false;
+    tableWrap.hidden = true;
+    tbody.innerHTML = "";
+    return;
+  }
+
+  emptyEl.hidden = true;
+  tableWrap.hidden = false;
+  tbody.innerHTML = renderPredictionRows(list);
+}
+
+function renderPredictionsTable() {
   return `
     <div class="admin-filters">
       <input type="search" id="admin-pred-search" class="admin-input" placeholder="Buscar usuario o equipo…" />
@@ -140,7 +162,8 @@ function renderPredictionsTable() {
           .join("")}
       </select>
     </div>
-    <div class="admin-table-wrap">
+    <p class="admin-empty" id="admin-pred-empty" hidden>No hay pronósticos para mostrar.</p>
+    <div class="admin-table-wrap" id="admin-pred-table-wrap">
       <table class="admin-table">
         <thead>
           <tr>
@@ -152,7 +175,7 @@ function renderPredictionsTable() {
             <th>Puntos</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody id="admin-pred-tbody"></tbody>
       </table>
     </div>`;
 }
@@ -229,15 +252,17 @@ function renderAdminPanel() {
   renderAdminNav();
 
   if (adminView === "ranking") root.innerHTML = renderRanking();
-  else if (adminView === "predictions") root.innerHTML = renderPredictionsTable();
-  else root.innerHTML = renderResultsReadOnly();
+  else if (adminView === "predictions") {
+    root.innerHTML = renderPredictionsTable();
+    updatePredictionsTableBody(root);
+  } else root.innerHTML = renderResultsReadOnly();
 
   bindAdminPanelEvents(root);
 }
 
 function bindAdminPanelEvents(root) {
-  root.querySelector("#admin-pred-search")?.addEventListener("input", () => renderAdminPanel());
-  root.querySelector("#admin-pred-filter")?.addEventListener("change", () => renderAdminPanel());
+  root.querySelector("#admin-pred-search")?.addEventListener("input", () => updatePredictionsTableBody(root));
+  root.querySelector("#admin-pred-filter")?.addEventListener("change", () => updatePredictionsTableBody(root));
   root.querySelector("#admin-sync-results")?.addEventListener("click", handleSyncResults);
 }
 
