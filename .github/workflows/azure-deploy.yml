@@ -33,12 +33,30 @@ jobs:
           LOGIN_SERVER=$(az acr show --name "${{ vars.AZURE_ACR_NAME }}" --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --query loginServer -o tsv)
           echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
 
+      - name: Import Node base images to ACR
+        run: |
+          ACR="${{ vars.AZURE_ACR_NAME }}"
+          for img in node:20-bookworm node:20-bookworm-slim; do
+            if ! az acr repository show --name "$ACR" --image "$img" >/dev/null 2>&1; then
+              echo "Importando docker.io/library/${img}..."
+              az acr import \
+                --name "$ACR" \
+                --source "docker.io/library/${img}" \
+                --image "${img}"
+            else
+              echo "${img} ya existe en ACR, omitiendo import."
+            fi
+          done
+
       - name: Build and push image
         run: |
+          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
           az acr build \
             --registry "${{ vars.AZURE_ACR_NAME }}" \
             --image "${{ env.IMAGE_NAME }}:${{ github.sha }}" \
             --image "${{ env.IMAGE_NAME }}:latest" \
+            --build-arg "NODE_IMAGE=${LOGIN_SERVER}/node:20-bookworm" \
+            --build-arg "NODE_SLIM_IMAGE=${LOGIN_SERVER}/node:20-bookworm-slim" \
             .
 
       - name: Deploy to Container Apps
