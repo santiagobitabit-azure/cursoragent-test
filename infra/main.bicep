@@ -8,6 +8,12 @@ param location string = resourceGroup().location
 @description('Secreto JWT para firmar tokens de sesión. Usá un valor largo y aleatorio.')
 param jwtSecret string
 
+@description('Client ID de la app registrada en Microsoft Entra ID. Dejar vacío para desactivar login Microsoft.')
+param azureClientId string = ''
+
+@description('Tenant de Microsoft Entra ID. Usar "common" para cualquier cuenta Microsoft.')
+param azureTenantId string = 'common'
+
 @secure()
 @description('Contraseña del administrador de PostgreSQL Flexible Server.')
 param postgresAdminPassword string
@@ -166,6 +172,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'DATABASE_URL'
               secretRef: 'database-url'
+            }
+            {
+              name: 'AZURE_CLIENT_ID'
+              value: azureClientId
+            }
+            {
+              name: 'AZURE_TENANT_ID'
+              value: azureTenantId
             }
           ]
         }

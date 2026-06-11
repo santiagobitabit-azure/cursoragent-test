@@ -5,6 +5,10 @@ const { signToken, JWT_SECRET } = require("../middleware/auth");
 const jwt = require("jsonwebtoken");
 const logger = require("../logger");
 const { maskEmail } = logger;
+const {
+  getPublicConfig,
+  verifyMicrosoftIdToken,
+} = require("../services/microsoft-auth");
 
 const router = express.Router();
 const log = logger.child({ component: "auth" });
@@ -17,6 +21,53 @@ function userResponse(row) {
     isAdmin: !!row.is_admin,
   };
 }
+
+async function findOrCreateMicrosoftUser({ oid, email, name }) {
+  const { rows: byOid } = await pool.query(
+    "SELECT id, email, display_name, is_admin FROM users WHERE microsoft_oid = $1",
+    [oid]
+  );
+  if (byOid[0]) return byOid[0];
+
+  if (email) {
+    const { rows: byEmail } = await pool.query(
+      "SELECT id, email, display_name, is_admin, microsoft_oid FROM users WHERE email = $1",
+      [email]
+    );
+    if (byEmail[0]) {
+      if (!byEmail[0].microsoft_oid) {
+        await pool.query(
+          `UPDATE users
+           SET microsoft_oid = $1,
+               auth_provider = CASE WHEN auth_provider = 'local' THEN 'microsoft' ELSE auth_provider END
+           WHERE id = $2`,
+          [oid, byEmail[0].id]
+        );
+      }
+      return byEmail[0];
+    }
+  }
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const err = new Error("No se pudo obtener un email válido de la cuenta Microsoft.");
+    err.status = 400;
+    throw err;
+  }
+
+  const displayName = name.length >= 2 ? name : email.split("@")[0];
+  const { rows } = await pool.query(
+    `INSERT INTO users (email, display_name, password_hash, auth_provider, microsoft_oid, is_admin)
+     VALUES ($1, $2, NULL, 'microsoft', $3, FALSE)
+     RETURNING id, email, display_name, is_admin`,
+    [email, displayName, oid]
+  );
+  return rows[0];
+}
+
+router.get("/config", (_req, res) => {
+  const microsoft = getPublicConfig();
+  res.json({ microsoft });
+});
 
 router.post("/register", async (req, res) => {
   const { email, password, displayName } = req.body || {};
@@ -37,11 +88,21 @@ router.post("/register", async (req, res) => {
     return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
   }
 
+  const { rows: existing } = await pool.query(
+    "SELECT auth_provider FROM users WHERE email = $1",
+    [trimmedEmail]
+  );
+  if (existing[0]?.auth_provider === "microsoft") {
+    return res.status(409).json({
+      error: "Este email ya está registrado con Microsoft. Usá «Continuar con Microsoft».",
+    });
+  }
+
   const hash = bcrypt.hashSync(pass, 10);
   try {
     const { rows } = await pool.query(
-      `INSERT INTO users (email, display_name, password_hash, is_admin)
-       VALUES ($1, $2, $3, FALSE)
+      `INSERT INTO users (email, display_name, password_hash, auth_provider, is_admin)
+       VALUES ($1, $2, $3, 'local', FALSE)
        RETURNING id, email, display_name, is_admin, created_at`,
       [trimmedEmail, name, hash]
     );
@@ -64,11 +125,17 @@ router.post("/login", async (req, res) => {
   const pass = String(password || "");
 
   const { rows } = await pool.query(
-    "SELECT id, email, display_name, password_hash, is_admin FROM users WHERE email = $1",
+    "SELECT id, email, display_name, password_hash, is_admin, auth_provider FROM users WHERE email = $1",
     [trimmedEmail]
   );
   const row = rows[0];
-  if (!row || !bcrypt.compareSync(pass, row.password_hash)) {
+  if (!row || !row.password_hash || !bcrypt.compareSync(pass, row.password_hash)) {
+    if (row?.auth_provider === "microsoft" && !row.password_hash) {
+      log.warn({ reason: "microsoft_account", email: maskEmail(trimmedEmail) }, "login failed");
+      return res.status(401).json({
+        error: "Esta cuenta usa Microsoft. Iniciá sesión con «Continuar con Microsoft».",
+      });
+    }
     log.warn({ reason: "invalid_credentials", email: maskEmail(trimmedEmail) }, "login failed");
     return res.status(401).json({ error: "Email o contraseña incorrectos." });
   }
@@ -81,6 +148,33 @@ router.post("/login", async (req, res) => {
   const token = signToken(user);
   log.info({ userId: user.id, email: maskEmail(trimmedEmail) }, "user logged in");
   res.json({ token, user: userResponse(user) });
+});
+
+router.post("/microsoft", async (req, res) => {
+  const idToken = String(req.body?.idToken || "").trim();
+  if (!idToken) {
+    return res.status(400).json({ error: "Falta el token de Microsoft." });
+  }
+
+  try {
+    const claims = await verifyMicrosoftIdToken(idToken);
+    const user = await findOrCreateMicrosoftUser(claims);
+    const token = signToken(user);
+    log.info({ userId: user.id, email: maskEmail(user.email), provider: "microsoft" }, "user logged in");
+    res.json({ token, user: userResponse(user) });
+  } catch (err) {
+    if (err.code === "NOT_CONFIGURED") {
+      return res.status(503).json({ error: "Inicio de sesión con Microsoft no está configurado." });
+    }
+    if (err.code === "INVALID_TOKEN") {
+      log.warn({ reason: "invalid_microsoft_token" }, "microsoft login failed");
+      return res.status(401).json({ error: "Token de Microsoft inválido o expirado." });
+    }
+    if (err.status === 400) {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
 });
 
 router.get("/me", async (req, res) => {
