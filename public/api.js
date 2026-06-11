@@ -44,6 +44,20 @@ const AuthAPI = {
     return this.request("/api/auth/me");
   },
 
+  getAuthConfig() {
+    return fetch("/api/auth/config").then((r) => {
+      if (!r.ok) throw new Error("No se pudo cargar la configuración de auth.");
+      return r.json();
+    });
+  },
+
+  loginWithMicrosoft(idToken) {
+    return this.request("/api/auth/microsoft", {
+      method: "POST",
+      body: JSON.stringify({ idToken }),
+    });
+  },
+
   getPredictions() {
     return this.request("/api/predictions");
   },

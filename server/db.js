@@ -63,6 +63,18 @@ async function init() {
     WHERE locked = TRUE OR source = 'admin'
   `);
 
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'local';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS microsoft_oid TEXT;
+    ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_microsoft_oid_key
+    ON users (microsoft_oid)
+    WHERE microsoft_oid IS NOT NULL
+  `);
+
   initialized = true;
 }
 

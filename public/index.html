@@ -199,6 +199,12 @@
       <div class="auth-modal__card">
         <button type="button" id="auth-modal-close" class="auth-modal__close" aria-label="Cerrar">×</button>
         <h2 id="auth-modal-title" class="auth-modal__title">Iniciar sesión</h2>
+        <div id="auth-microsoft-section" class="auth-microsoft" hidden>
+          <button type="button" id="btn-microsoft-login" class="btn btn--microsoft btn--block">
+            Continuar con Microsoft
+          </button>
+          <p class="auth-divider" aria-hidden="true"><span>o con email y contraseña</span></p>
+        </div>
         <form id="auth-form" class="auth-form">
           <div id="auth-name-field" class="auth-form__field">
             <label for="auth-display-name">Nombre</label>
@@ -221,8 +227,10 @@
       </div>
     </div>
 
+    <script src="https://alcdn.msauth.net/browser/3.28.0/js/msal-browser.min.js"></script>
     <script src="fixture-data.js"></script>
     <script src="api.js"></script>
+    <script src="msal-auth.js"></script>
     <script src="auth-ui.js"></script>
     <script src="scoring-ui.js"></script>
     <script src="app.js"></script>

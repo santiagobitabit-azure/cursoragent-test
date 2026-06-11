@@ -7,8 +7,41 @@ const authForm = () => document.getElementById("auth-form");
 const authTitle = () => document.getElementById("auth-modal-title");
 const authError = () => document.getElementById("auth-error");
 const nameField = () => document.getElementById("auth-name-field");
+const microsoftSection = () => document.getElementById("auth-microsoft-section");
 
 let authMode = "login";
+
+function updateMicrosoftVisibility() {
+  const section = microsoftSection();
+  if (!section) return;
+  section.hidden = !window.MicrosoftAuth?.isEnabled?.();
+}
+
+async function completeLogin(data) {
+  AuthAPI.setToken(data.token);
+  currentUser = data.user;
+  closeAuthModal();
+  await loadPredictions();
+  renderAuthBar();
+  if (typeof updateAdminTabVisibility === "function") updateAdminTabVisibility();
+  window.dispatchEvent(new CustomEvent("auth:change", { detail: { user: currentUser } }));
+}
+
+async function handleMicrosoftLogin() {
+  authError().textContent = "";
+  const btn = document.getElementById("btn-microsoft-login");
+  if (btn) btn.disabled = true;
+
+  try {
+    const idToken = await MicrosoftAuth.loginWithMicrosoftPopup();
+    const data = await AuthAPI.loginWithMicrosoft(idToken);
+    await completeLogin(data);
+  } catch (err) {
+    authError().textContent = err.message || "No se pudo iniciar sesión con Microsoft.";
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
 
 function renderAuthBar() {
   const bar = authBar();
@@ -59,6 +92,7 @@ function openAuthModal(mode) {
     mode === "login" ? "¿No tenés cuenta? Registrate" : "¿Ya tenés cuenta? Iniciá sesión";
   authError().textContent = "";
   authForm().reset();
+  updateMicrosoftVisibility();
   modal.hidden = false;
   document.getElementById("auth-email")?.focus();
 }
@@ -82,13 +116,7 @@ async function handleAuthSubmit(e) {
         ? await AuthAPI.login(email, password)
         : await AuthAPI.register(email, password, displayName);
 
-    AuthAPI.setToken(data.token);
-    currentUser = data.user;
-    closeAuthModal();
-    await loadPredictions();
-    renderAuthBar();
-    if (typeof updateAdminTabVisibility === "function") updateAdminTabVisibility();
-    window.dispatchEvent(new CustomEvent("auth:change", { detail: { user: currentUser } }));
+    await completeLogin(data);
   } catch (err) {
     authError().textContent = err.message;
   }
@@ -119,11 +147,25 @@ async function initAuth() {
   document.getElementById("auth-modal-close")?.addEventListener("click", closeAuthModal);
   document.getElementById("auth-modal-backdrop")?.addEventListener("click", closeAuthModal);
   authForm()?.addEventListener("submit", handleAuthSubmit);
+  document.getElementById("btn-microsoft-login")?.addEventListener("click", handleMicrosoftLogin);
 
   document.getElementById("auth-switch")?.addEventListener("click", (e) => {
     e.preventDefault();
     openAuthModal(authMode === "login" ? "register" : "login");
   });
+
+  const redirectIdToken = await MicrosoftAuth.initMicrosoftAuth();
+  updateMicrosoftVisibility();
+
+  if (redirectIdToken) {
+    try {
+      const data = await AuthAPI.loginWithMicrosoft(redirectIdToken);
+      await completeLogin(data);
+    } catch (err) {
+      authError().textContent = err.message;
+      openAuthModal("login");
+    }
+  }
 
   const token = AuthAPI.getToken();
   if (token) {
