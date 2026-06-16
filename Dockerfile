@@ -1,7 +1,4 @@
-ARG NODE_IMAGE=node:20-bookworm
-ARG NODE_SLIM_IMAGE=node:20-bookworm-slim
-
-FROM ${NODE_IMAGE} AS builder
+FROM node:20-bookworm AS builder
 
 WORKDIR /app
 
@@ -10,7 +7,7 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-FROM ${NODE_SLIM_IMAGE}
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 

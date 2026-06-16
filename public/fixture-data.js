@@ -55,7 +55,7 @@ const GROUP_STAGE_MATCHES = [
     "home": "Australia",
     "away": "Türkiye",
     "venue": "BC Place Vancouver",
-    "kickoff": "2026-06-13T00:00:00-04:00",
+    "kickoff": "2026-06-14T00:00:00-04:00",
     "id": "m006"
   },
   {
@@ -181,7 +181,7 @@ const GROUP_STAGE_MATCHES = [
     "home": "Austria",
     "away": "Jordan",
     "venue": "San Francisco Bay Area Stadium",
-    "kickoff": "2026-06-16T00:00:00-04:00",
+    "kickoff": "2026-06-17T00:00:00-04:00",
     "id": "m020"
   },
   {
@@ -262,7 +262,7 @@ const GROUP_STAGE_MATCHES = [
     "home": "Brazil",
     "away": "Haiti",
     "venue": "Philadelphia Stadium",
-    "kickoff": "2026-06-19T20:30:00-04:00",
+    "kickoff": "2026-06-19T21:00:00-04:00",
     "id": "m029"
   },
   {
@@ -325,7 +325,7 @@ const GROUP_STAGE_MATCHES = [
     "home": "Tunisia",
     "away": "Japan",
     "venue": "Estadio Monterrey",
-    "kickoff": "2026-06-20T00:00:00-04:00",
+    "kickoff": "2026-06-21T00:00:00-04:00",
     "id": "m036"
   },
   {
