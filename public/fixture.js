@@ -5,7 +5,10 @@ const LIVE_POLL_MS = 60_000;
 let currentFilter = "all";
 let liveResults = {};
 let pollTimer = null;
+let lastActiveMatches = [];
+let lastFootballDayKey = "";
 let fixturePanelActive = false;
+let countdownPanelActive = true;
 
 const dateFmt = new Intl.DateTimeFormat("es-AR", {
   weekday: "short",
@@ -19,6 +22,111 @@ const timeFmt = new Intl.DateTimeFormat("es-AR", {
   hour12: false,
   timeZone: TZ_AR,
 });
+const footballDayLabelFmt = new Intl.DateTimeFormat("es-AR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: TZ_AR,
+});
+
+function getArDateParts(now) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ_AR,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const map = Object.fromEntries(
+    parts.filter((p) => p.type !== "literal").map((p) => [p.type, p.value])
+  );
+  let hour = Number(map.hour);
+  if (hour === 24) hour = 0;
+
+  return {
+    year: map.year,
+    month: map.month,
+    day: map.day,
+    hour,
+    minute: Number(map.minute),
+  };
+}
+
+function normalizeArHour(hour) {
+  return hour === 24 ? 0 : hour;
+}
+
+function shiftDateStr(year, month, day, deltaDays) {
+  const dt = new Date(`${year}-${month}-${day}T12:00:00-03:00`);
+  dt.setDate(dt.getDate() + deltaDays);
+  return {
+    year: String(dt.getFullYear()),
+    month: String(dt.getMonth() + 1).padStart(2, "0"),
+    day: String(dt.getDate()).padStart(2, "0"),
+  };
+}
+
+function getFootballDayWindowAr(now = new Date()) {
+  const { year, month, day, hour } = getArDateParts(now);
+  let footballYear = year;
+  let footballMonth = month;
+  let footballDay = day;
+
+  // 00:00–05:59 AR: cola del día futbolero anterior.
+  // 06:00–09:59 AR: transición; seguimos mostrando el día anterior hasta las 10:00.
+  if (hour < 10) {
+    ({ year: footballYear, month: footballMonth, day: footballDay } = shiftDateStr(
+      year,
+      month,
+      day,
+      -1
+    ));
+  }
+
+  const start = new Date(`${footballYear}-${footballMonth}-${footballDay}T10:00:00-03:00`);
+  const next = shiftDateStr(footballYear, footballMonth, footballDay, 1);
+  const end = new Date(`${next.year}-${next.month}-${next.day}T06:00:00-03:00`);
+  const label = `${footballDayLabelFmt.format(start)} · 10:00 a 06:00 hs (Argentina)`;
+
+  return {
+    start,
+    end,
+    label,
+    key: `${footballYear}-${footballMonth}-${footballDay}`,
+  };
+}
+
+function isKickoffInFootballWindow(match, start, end) {
+  const kickoffMs = new Date(match.kickoff).getTime();
+  if (kickoffMs >= start.getTime() && kickoffMs < end.getTime()) return true;
+
+  // Partidos del calendario siguiente con pitido antes de las 06:00 AR.
+  const kickoffParts = getArDateParts(new Date(match.kickoff));
+  const kickoffHour = normalizeArHour(kickoffParts.hour);
+  const windowEndParts = getArDateParts(end);
+
+  return (
+    kickoffParts.year === windowEndParts.year &&
+    kickoffParts.month === windowEndParts.month &&
+    kickoffParts.day === windowEndParts.day &&
+    kickoffHour < 6
+  );
+}
+
+function getTodayMatches(now = new Date()) {
+  const { start, end } = getFootballDayWindowAr(now);
+
+  return GROUP_STAGE_MATCHES.filter((m) => isKickoffInFootballWindow(m, start, end)).sort(
+    (a, b) => new Date(a.kickoff) - new Date(b.kickoff)
+  );
+}
+
+function hasLiveTodayMatches() {
+  return getTodayMatches().some((m) => liveResults[m.id]?.status === "live");
+}
 
 function teamLabel(id) {
   const name = TEAM_NAMES_ES[id] || id;
@@ -160,6 +268,38 @@ function renderMatch(match) {
     </li>`;
 }
 
+function renderTodayMatches() {
+  const list = document.getElementById("today-matches-list");
+  const empty = document.getElementById("today-matches-empty");
+  const dateEl = document.getElementById("today-matches-date");
+  if (!list) return;
+
+  const windowInfo = getFootballDayWindowAr();
+  lastFootballDayKey = windowInfo.key;
+  if (dateEl) dateEl.textContent = windowInfo.label;
+
+  const matches = getTodayMatches();
+  if (empty) empty.hidden = matches.length > 0;
+
+  if (matches.length === 0) {
+    list.innerHTML = "";
+    return;
+  }
+
+  list.innerHTML = matches.map(renderMatch).join("");
+  bindPredictionForms(list);
+}
+
+function maybeRefreshTodayMatchesForWindowChange() {
+  if (!countdownPanelActive) return false;
+
+  const { key } = getFootballDayWindowAr();
+  if (key === lastFootballDayKey) return false;
+
+  renderTodayMatches();
+  return true;
+}
+
 function renderGroupCard(groupId) {
   const matches = GROUP_STAGE_MATCHES.filter((m) => m.group === groupId);
   const highlight = groupId === "J" ? " group-card--arg" : "";
@@ -187,6 +327,11 @@ function renderFixture(filterGroup = "all") {
   bindPredictionForms(grid);
 }
 
+function refreshMatchViews() {
+  renderFixture(currentFilter);
+  if (countdownPanelActive) renderTodayMatches();
+}
+
 function stopLivePolling() {
   if (pollTimer) {
     clearInterval(pollTimer);
@@ -195,9 +340,21 @@ function stopLivePolling() {
 }
 
 function scheduleLivePolling(activeMatches) {
+  if (activeMatches) lastActiveMatches = activeMatches;
+
   stopLivePolling();
-  if (!fixturePanelActive || !activeMatches?.length) return;
-  pollTimer = setInterval(() => loadLiveResults(), LIVE_POLL_MS);
+  if (!fixturePanelActive && !countdownPanelActive) return;
+
+  const shouldPoll =
+    lastActiveMatches.length > 0 ||
+    countdownPanelActive ||
+    (fixturePanelActive && hasLiveTodayMatches());
+  if (!shouldPoll) return;
+
+  pollTimer = setInterval(() => {
+    maybeRefreshTodayMatchesForWindowChange();
+    loadLiveResults();
+  }, LIVE_POLL_MS);
 }
 
 async function loadLiveResults() {
@@ -210,7 +367,7 @@ async function loadLiveResults() {
 
     const data = await AuthAPI.getLiveResults();
     liveResults = data.results || {};
-    renderFixture(currentFilter);
+    refreshMatchViews();
     scheduleLivePolling(data.sync?.activeMatches);
 
     for (const [matchId, result] of Object.entries(liveResults)) {
@@ -232,7 +389,18 @@ async function onFixturePanelOpen() {
 
 function onFixturePanelClose() {
   fixturePanelActive = false;
-  stopLivePolling();
+  scheduleLivePolling(lastActiveMatches);
+}
+
+async function onCountdownPanelOpen() {
+  countdownPanelActive = true;
+  renderTodayMatches();
+  await loadLiveResults();
+}
+
+function onCountdownPanelClose() {
+  countdownPanelActive = false;
+  scheduleLivePolling(lastActiveMatches);
 }
 
 async function handlePredictionSubmit(form) {
@@ -277,6 +445,32 @@ function bindPredictionForms(container) {
   });
 }
 
+function initPanelEvents() {
+  window.addEventListener("auth:change", () => {
+    refreshMatchViews();
+  });
+
+  window.addEventListener("results:synced", () => {
+    if (fixturePanelActive || countdownPanelActive) loadLiveResults();
+  });
+
+  window.addEventListener("panel:open", (e) => {
+    if (e.detail?.panel === "fixture") onFixturePanelOpen();
+    if (e.detail?.panel === "countdown") onCountdownPanelOpen();
+  });
+
+  window.addEventListener("panel:close", (e) => {
+    if (e.detail?.panel === "fixture") onFixturePanelClose();
+    if (e.detail?.panel === "countdown") onCountdownPanelClose();
+  });
+}
+
+function initTodayMatches() {
+  initPanelEvents();
+  renderTodayMatches();
+  loadLiveResults();
+}
+
 function initFixture() {
   const grid = document.getElementById("fixture-grid");
   const filters = document.getElementById("group-filters");
@@ -292,25 +486,10 @@ function initFixture() {
     renderFixture(btn.dataset.group);
   });
 
-  window.addEventListener("auth:change", () => {
-    renderFixture(currentFilter);
-  });
-
-  window.addEventListener("results:synced", () => {
-    if (fixturePanelActive) loadLiveResults();
-  });
-
-  window.addEventListener("panel:open", (e) => {
-    if (e.detail?.panel === "fixture") onFixturePanelOpen();
-  });
-
-  window.addEventListener("panel:close", (e) => {
-    if (e.detail?.panel === "fixture") onFixturePanelClose();
-  });
-
   renderFixture("all");
 }
 
 window.onFixturePanelOpen = onFixturePanelOpen;
 window.onFixturePanelClose = onFixturePanelClose;
+initTodayMatches();
 initFixture();

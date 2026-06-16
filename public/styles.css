@@ -638,8 +638,20 @@ body {
 }
 
 .panel#panel-countdown.panel--active {
-  display: grid;
-  place-items: center;
+  display: block;
+  padding-bottom: 2rem;
+}
+
+.countdown-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.card--countdown {
+  width: min(560px, 100%);
 }
 
 .card {
@@ -729,6 +741,49 @@ body {
   .countdown {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* —— Partidos del día (home) —— */
+
+.today-matches {
+  width: min(720px, 100%);
+  text-align: left;
+}
+
+.today-matches__head {
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.today-matches__head h2 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: 800;
+}
+
+.today-matches__date {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.today-matches__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.today-matches__list .match {
+  padding: 0.85rem 0;
+}
+
+.today-matches__empty {
+  margin: 0;
+  padding: 1.25rem 0 0.25rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #64748b;
 }
 
 /* —— Fixture —— */
