@@ -651,7 +651,7 @@ body {
 }
 
 .card--countdown {
-  width: min(560px, 100%);
+  width: min(640px, 100%);
 }
 
 .card {
@@ -734,6 +734,139 @@ body {
 
 .status--done {
   color: var(--celeste-dark);
+  font-weight: 600;
+}
+
+.countdown-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem 1rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.countdown-live__badge {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.35rem;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.countdown-live__score {
+  font-size: 1.65rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--celeste-dark);
+}
+
+.arg-prev {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.arg-prev__title,
+.group-standings__title {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--celeste-dark);
+  text-align: center;
+}
+
+.arg-prev__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.arg-result {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.6rem;
+  background: linear-gradient(90deg, rgba(116, 172, 223, 0.1), transparent);
+}
+
+.arg-result__meta {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.arg-result__teams {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.arg-result__teams .vs {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.arg-result__score {
+  font-size: 1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--celeste-dark);
+}
+
+.group-standings {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.group-standings__table-wrap {
+  overflow-x: auto;
+}
+
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.standings-table th,
+.standings-table td {
+  padding: 0.5rem 0.45rem;
+  text-align: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.standings-table th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.standings-table td:nth-child(2),
+.standings-table th:nth-child(2) {
+  text-align: left;
+}
+
+.standings-row--arg {
+  background: linear-gradient(90deg, rgba(116, 172, 223, 0.12), transparent);
+}
+
+.standings-row--arg td {
   font-weight: 600;
 }
 

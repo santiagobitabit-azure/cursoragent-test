@@ -329,7 +329,10 @@ function renderFixture(filterGroup = "all") {
 
 function refreshMatchViews() {
   renderFixture(currentFilter);
-  if (countdownPanelActive) renderTodayMatches();
+  if (countdownPanelActive) {
+    renderTodayMatches();
+    window.renderArgentinaCountdown?.(liveResults);
+  }
 }
 
 function stopLivePolling() {
