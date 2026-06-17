@@ -74,17 +74,21 @@
           <main class="card card--countdown">
             <header class="hero">
               <p class="eyebrow">Copa Mundial FIFA 2026 · Grupo J</p>
-              <h1>Primer partido de Argentina</h1>
+              <h1 id="countdown-title">Próximo partido de Argentina</h1>
               <p class="match">
-                <span class="teams">🇦🇷 Argentina vs Argelia 🇩🇿</span>
+                <span id="countdown-teams" class="teams">—</span>
               </p>
-              <p class="meta">
-                Martes 16 de junio de 2026 · 22:00 (hora Argentina)<br />
-                Arrowhead Stadium · Kansas City
-              </p>
+              <p id="countdown-meta" class="meta">Cargando…</p>
             </header>
 
-            <section class="countdown" aria-live="polite" aria-label="Tiempo restante">
+            <div id="countdown-live" class="countdown-live" hidden></div>
+
+            <section
+              id="countdown-timer"
+              class="countdown"
+              aria-live="polite"
+              aria-label="Tiempo restante"
+            >
               <div class="unit">
                 <span id="days" class="value">--</span>
                 <span class="label">días</span>
@@ -104,6 +108,38 @@
             </section>
 
             <p id="status" class="status">Calculando…</p>
+
+            <section
+              id="arg-prev-results"
+              class="arg-prev"
+              aria-labelledby="arg-prev-title"
+              hidden
+            >
+              <h2 id="arg-prev-title" class="arg-prev__title">Resultados de Argentina</h2>
+              <ul id="arg-prev-list" class="arg-prev__list"></ul>
+            </section>
+
+            <section
+              id="group-j-standings"
+              class="group-standings"
+              aria-labelledby="group-j-title"
+            >
+              <h2 id="group-j-title" class="group-standings__title">Tabla del Grupo J</h2>
+              <div class="group-standings__table-wrap">
+                <table class="standings-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Equipo</th>
+                      <th scope="col">PJ</th>
+                      <th scope="col">DG</th>
+                      <th scope="col">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody id="group-j-standings-body"></tbody>
+                </table>
+              </div>
+            </section>
           </main>
 
           <section class="today-matches card" aria-labelledby="today-matches-title">
